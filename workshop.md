@@ -1,5 +1,5 @@
 ---
-published: false
+published: true
 type: workshop
 title: Create self-study Flashcards using RAG (Retrieval Augmented Generation) with Microsoft Fabric and Azure OpenAI
 short_title: Create self-study Flashcards with Microsoft Fabric and Azure OpenAI
