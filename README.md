@@ -1,8 +1,10 @@
 # Welcome
 
-In this workshop, you will learn how to use Microsoft Fabric and with Azure OpenAI to generate a set of study flashcards, so you can learn new concepts in a fun and playful way. 
+In this workshop, you will learn how to use [Microsoft Fabric](https://www.microsoft.com/microsoft-fabric) and with [Azure OpenAI](https://azure.microsoft.com/products/ai-services/openai-service) to generate a set of study flashcards, so you can learn new concepts in a fun and playful way. 
 
-In this example we will use Microsoft Learn as the source material for the flashcards. We will fetch the Markdown files from the Microsoft Learn GitHub repository and import them into a Microsoft Fabric Lakehouse. Then we will use Azure OpenAI to generate a set of study flashcards. We will generate QR codes for each flashcard pointing to the source material. Finally, we will run data pipelines to copy the data to an external data store (Azure Blob Storage) for public consumption. We will generate a ready to print PDF with your flashcards.
+In this example we will use [Microsoft Learn](https://learn.microsoft.com/training/) as the source material for the flashcards. 
+
+We will fetch the Markdown files from the Microsoft Learn GitHub repository and import them into a Microsoft Fabric Lakehouse. Then we will use Azure OpenAI to generate a set of study flashcards. We will generate QR codes for each flashcard pointing to the source material. Finally, we will run data pipelines to copy the data to an external data store (Azure Blob Storage) for public consumption. We will generate a ready to print PDF with your flashcards.
 
 ![Screenshot of the Flashcards PDF](assets/flashcards-pdf.png)
 
