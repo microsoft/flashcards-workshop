@@ -4,7 +4,7 @@ In this workshop, you will learn how to use [Microsoft Fabric](https://www.micro
 
 You can follow the full workshop at [MOAW](https://moaw.dev/), our collection of hands on tutorials to learn and teach. [Fabric Flashcards Workshop](https://aka.ms/FFWorkshop)
 
-[![Screenshot of MOAW workshop](./images/moaw.png)](https://aka.ms/FFWorkshop)
+[![Screenshot of MOAW workshop](./assets/moaw.png)](https://aka.ms/FFWorkshop)
 
 Or browse directly to the workshop source code here [workshop.md](./workshop.md)
 
