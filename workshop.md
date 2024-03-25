@@ -474,7 +474,7 @@ Try scanning the QR code with your phone to see how it leads to the source mater
 
 ---
 
-# Create a Fabric Data Pipelines
+# Create a Fabric Data Pipeline
 
 Now that we have the flashcards and the QR codes, we can run a [data pipeline](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/training/modules/explore-azure-blob-storage/)) for public consumption.
 
