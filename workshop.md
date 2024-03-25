@@ -24,9 +24,17 @@ tags: openai, fabric, python, flashcards, Microsoft Fabric, Azure OpenAI
 
 # Welcome
 
-In this workshop, you will learn how to use Microsoft Fabric and with Azure OpenAI to generate a set of study flashcards, so you can learn new concepts in a fun and playful way. 
+In this workshop, you will learn how to use [Microsoft Fabric](https://www.microsoft.com/microsoft-fabric) with [Azure OpenAI](https://azure.microsoft.com/products/ai-services/openai-service) to generate a set of study flashcards, so you can learn new concepts in a fun and playful way. 
 
-In this example we will use Microsoft Learn as the source material for the flashcards. We will fetch the Markdown files from the Microsoft Learn GitHub repository and import them into a Microsoft Fabric Lakehouse. Then we will use Azure OpenAI to generate a set of study flashcards. We will generate QR codes for each flashcard pointing to the source material. Finally, we will run data pipelines to copy the data to an external data store (Azure Blob Storage) for public consumption. We will generate a ready to print PDF with your flashcards.
+In this example we will use [Microsoft Learn](https://learn.microsoft.com/training/) as the source material for the flashcards. 
+
+We will fetch the Markdown files from the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/) and import them into a Microsoft Fabric [Lakehouse](https://learn.microsoft.com/fabric/data-engineering/lakehouse-overview). 
+
+Then we will use Azure OpenAI to generate a set of study flashcards. We will generate QR codes for each flashcard pointing to the source material. 
+
+Finally, we will run [data pipelines](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/azure/storage/blobs/)) for public consumption. 
+
+We will generate a ready to print PDF with your flashcards using the [Printable Flashcards Generator](https://martafagundez.github.io/printable-flashcards-generator/).
 
 ![Screenshot of the Flashcards PDF](assets/flashcards-pdf.png)
 
@@ -400,7 +408,7 @@ with open(f"{LAKEHOUSE_FILE_PATH}/generated-QAs.json", "w") as fp:
 
 As the code runs, you should see the generated questions and answers in the output. The questions and answers are stored in the `QAS` list, which is then saved to a JSON file in the Lakehouse.
 
-## Generate QR Codes
+## Create the Flashcards QR Codes
 
 Now that we have the questions and answers, we can generate QR codes for each flashcard. The QR code will point to the source material in the Microsoft Learn GitHub repository. In this way we follow [Responsible AI practices](https://www.microsoft.com/en-us/ai/responsible-ai) by providing the source material for each flashcard, so not only the user can learn more about the topic but also know where the LLM model got the information from.
 
