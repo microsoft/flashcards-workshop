@@ -22,7 +22,7 @@ banner_url: assets/banner.png           # Optional. Should be a 1280x640px image
 #   - Section 2 title
 ---
 
-# Welcome
+# Create Flashcards with Microsoft Fabric and Azure OpenAI
 
 In this workshop, you will learn how to use [Microsoft Fabric](https://www.microsoft.com/microsoft-fabric) with [Azure OpenAI](https://azure.microsoft.com/products/ai-services/openai-service) to generate a set of study flashcards, so you can learn new concepts in a fun and playful way. 
 
