@@ -10,8 +10,8 @@ authors:
 contacts:
   - '@old_sound'
 duration_minutes: 30
-tags: openai, fabric, python, flashcards, Microsoft Fabric, Azure OpenAI
-#banner_url: assets/banner.jpg           # Optional. Should be a 1280x640px image
+tags: openai, fabric, python, flashcards, Microsoft Fabric, Azure OpenAI, notebooks, data engineering, data pipelines
+banner_url: assets/banner.png           # Optional. Should be a 1280x640px image
 #video_url: https://youtube.com/link     # Optional. Link to a video of the workshop
 #audience: students                      # Optional. Audience of the workshop (students, pro devs, etc.)
 #wt_id: <cxa_tracking_id>                # Optional. Set advocacy tracking code for supported links
