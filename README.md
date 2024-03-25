@@ -2,7 +2,7 @@
 
 In this workshop, you will learn how to use [Microsoft Fabric](https://www.microsoft.com/microsoft-fabric) and with [Azure OpenAI](https://azure.microsoft.com/products/ai-services/openai-service) to generate a set of study flashcards, so you can learn new concepts in a fun and playful way. 
 
-You can follow the full workshop at [MOAW](https://moaw.dev/), our collection of hands on tutorials to learn and teach. [Fabric Flashcards Workshop](https://aka.ms/FFWorkshop)
+You can follow the full workshop at [MOAW](https://moaw.dev/), by clicking the following link [Fabric Flashcards Workshop](https://aka.ms/FFWorkshop), or the image below:
 
 [![Screenshot of MOAW workshop](./assets/moaw.png)](https://aka.ms/FFWorkshop)
 
