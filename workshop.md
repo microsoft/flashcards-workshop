@@ -76,6 +76,10 @@ In Azure Portal, you need to provision the following services:
 
 ## Create a Lakehouse
 
+Click `Workspaces` and select you workspace ie `My workspace`. Click new item and scroll to `Store data` and click `Lakehouse`
+
+![Screenshot of Navigation to create new Lakehouse](./assets/lake-house-new-item.png)
+
 To create a new Lakehouse in your Microsoft Fabric workspace, open the Synapse Data Engineering experience and select the `Lakehouse` button. Provide a name of `flashcards_workshop` and select `Create`.
 
 ![Screenshot of New Lakehouse dialog in Synapse Data Engineering tab](assets/new-lakehouse.png)
@@ -91,162 +95,264 @@ Once you are in the new Lakehouse, create a new notebook by selecting `Open Note
 
 Once the notebook is created, select the `Save as` icon and save the notebook as `flashcards_workshop`. 
 
-## Install required libraries
-
-Once the notebook is saved, add the following code to the first cell to install the required libraries:
-
-```bash
-%pip install qrcode
-```
-
-We are going to use the `qrcode` library to generate the QR codes for the flashcards. We do this as a first step, because once the library is installed, the notebook will automatically restart the kernel to make the library available for the rest of the code.
-
----
-
 # Import Data to your Lakehouse
 
 The first step is to import the data from an external source into your Lakehouse. For this workshop, we will use Microsoft Learn modules as our source material. We'll fetch the learn module Markdown files from the Microsoft Learn GitHub repository and import them into our Lakehouse.
 
-![Microsoft Learn GitHub](assets/microsoft-learn.png)
+![Screenshot of the Microsoft Learn docs](/assets/microsoft-learn.png)
 
-## Setup the Lakehouse folder structure
+# Setup the Lakehouse folder structure
 
-Let's say we want to practice our knowledge on the [Get started with Real-Time Analytics in Microsoft Fabric](https://learn.microsoft.com/training/modules/get-started-kusto-fabric/) module. The source material for this module is available in the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/). In this case navigate to the module folder [learn-pr/wwl/get-started-kusto-fabric](https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric). There you will find an `index.yml` file that contains the metadata for the module. This will list all the units and their respective Markdown files.
+Let's say we want to practice our knowledge on the [Get started with Real-Time Analytics in Microsoft Fabric](https://learn.microsoft.com/training/modules/get-started-kusto-fabric/?WT.mc_id=javascript-76678-cxa) module. The source material for this module is available in the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/). In this case navigate to the module folder [learn-pr/wwl/get-started-kusto-fabric](https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric). There you will find an includes folder that contains the files in the module. This is a list of all the units in their respective Markdown files. Learn Modules are made of units.
 
-![Screenshot of the Microsoft Learn GitHub Get started with Real-Time Analytics in Microsoft Fabric learn module](assets/microsoft-learn-github-kusto.png)
+![This is a screenshot of Microsoft Learn GitHub](assets/microsoft-learn.png)
 
-To obtain the file URL, select the `index.yml` on GitHub and select the `Raw` button. Copy the URL since you'll use it in the code below.
+Copy the git repository URL. In this case, the URL is `https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric/includes`.
 
-Add the following code to your notebook into a new cell:
+> **NB:** Please Note you can use any other Microsoft Learn module URL, but while copying the URL, make sure you are inside the `include` folder for this to work. i.e.
+> - `https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl-data-ai/analyze-images-computer-vision/includes`
+> - `https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl-data-ai/automl-azure-databricks/includes`
+
+
+#### Install Dependencies
+
+On your notebook, add the following code to install qrcode and openai library
 
 ```python
+%pip install qrcode
+%pip install openai
+```
+We are going to use openai to generate questions & answers. Qrcode will be used to generate the QR codes for the flashcards. We do this as a first step, because once the library is installed, the notebook will automatically restart the kernel to make the library available for the rest of the code.
+
+### Copy the Data to Your Lakehouse
+
+In this section, we'll copy data from a GitHub repository to your Lakehouse.
+
+#### 1. Import Necessary Libraries
+
+First, import the libraries we'll use throughout the tutorial. Add the following code to your notebook into a new cell (going forward please repeat this process for each code block):
+
+```python
+from notebookutils import mssparkutils
 import requests
 import os
-import yaml
-
-# learn module metadata URL
-LEARN_GITHUB_BASE = "https://raw.githubusercontent.com/MicrosoftDocs/learn/main/learn-pr"
-url = f"{LEARN_GITHUB_BASE}/wwl/get-started-kusto-fabric/index.yml"
-
-# load module metadata
-response = requests.get(url)
-index_data = yaml.safe_load(response.content)
-
-# print the module metadata
-index_data
+import re
+import qrcode
 ```
 
-Run the cell.
+**Explanation:**
 
-<div class="warning" data-title="Note">
+- **`mssparkutils`**: Utilities for interacting with Microsoft Spark environments.
+- **`requests`**: For making HTTP requests to the GitHub API.
+- **`os`**: For interacting with the operating system.
+- **`re`**: For regular expressions.
+- **`qrcode`**: For generating QR codes (if needed later).
 
-> Going forward, it is expected that you run each cell in the notebook to execute the code.
+#### 2. Define Helper Functions
 
-</div>
-
-Now that the YAML file is loaded in the `index_data` variable, we can use it to build the folder structure in our Lakehouse.
+Now we'll define all the helper functions we'll use throughout the tutorial.
 
 ```python
-# use the module uid to calculate the folder structure of the learn module
-module_uid = index_data['uid']
+# Helper Functions
 
-module_units = index_data['units']
+def parse_github_url(url):
+    """
+    Parses a GitHub URL and extracts the owner, repository name, branch, and path.
+    """
+    pattern = r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/tree/(?P<branch>[^/]+)/(?P<path>.+)"
+    match = re.match(pattern, url)
+    if match:
+        return match.groupdict()
+    else:
+        raise ValueError("Invalid GitHub URL format.")
 
-# convert the module uid to a path
-uid_to_path = module_uid.replace(".", "/")
+def download_and_save_file(file_url, lakehouse_save_path):
+    """
+    Downloads a file from GitHub and saves it to the specified path in the Lakehouse.
+    """
+    try:
+        response = requests.get(file_url)
+        if response.status_code == 200:
+            # Create directories in Lakehouse if they don't exist
+            dir_path = os.path.dirname(lakehouse_save_path)
+            mssparkutils.fs.mkdirs(dir_path)
+            # Save the file content to Lakehouse
+            mssparkutils.fs.put(lakehouse_save_path, response.text, overwrite=True)
+            print(f"Successfully downloaded {lakehouse_save_path}")
+        else:
+            print(f"Failed to download {file_url}: HTTP {response.status_code}")
+    except Exception as e:
+        print(f"Error downloading {file_url}: {e}")
 
-# Path to Lakehouse Files
-LAKEHOUSE_FILE_PATH="/lakehouse/default/Files"
-
-# Path to Markdown Files
-MARKDOWN_PATH=f"{LAKEHOUSE_FILE_PATH}/markdown"
-
-# Path to Learn Module
-LEARN_MODULE_PATH=f"{MARKDOWN_PATH}/{uid_to_path}"
-
-# create folder to store our Markdown files
-os.makedirs(LEARN_MODULE_PATH, exist_ok=True)
-
-# save the index.yml file to the Lakehouse
-filename = url.rsplit("/")[-1]
-with open(os.path.join(LEARN_MODULE_PATH, filename), "wb") as f:
-    f.write(response.content)
+def download_contents(contents, base_save_path):
+    """
+    Recursively downloads contents from a GitHub repository and saves them to the Lakehouse.
+    """
+    for item in contents:
+        if item['type'] == 'file':
+            file_name = item['name']
+            download_url = item['download_url']
+            # Compute the relative path of the file within the module
+            relative_path = item['path'].replace(REPO_PATH + '/', '')
+            # Construct the Lakehouse save path
+            lakehouse_save_path = f"{base_save_path}/{relative_path}"
+            # Download and save the file
+            download_and_save_file(download_url, lakehouse_save_path)
+        elif item['type'] == 'dir':
+            # Handle subdirectories recursively
+            sub_dir_path = item['path']
+            sub_api_url = item['url']
+            sub_response = requests.get(sub_api_url)
+            if sub_response.status_code == 200:
+                sub_contents = sub_response.json()
+                # Compute the new base save path for the subdirectory
+                sub_base_save_path = f"{base_save_path}/{item['name']}"
+                download_contents(sub_contents, sub_base_save_path)
+            else:
+                print(f"Failed to list contents of {sub_dir_path}: HTTP {sub_response.status_code}")
 ```
 
-If you go back to the Microsoft Learn GitHub repository, you will see that the Markdown files are stored in the `includes` folder. Let's create an equivalent folder in our Lakehouse. 
+**Explanation of Helper Functions:**
 
-![Screenshot of the Microsoft Learn GitHub Get started with Real-Time Analytics in Microsoft Fabric learn module includes folder](assets/microsoft-learn-github-includes.png)
+- **`parse_github_url(url)`**: This function takes a GitHub URL and uses a regular expression to extract the owner, repository name, branch, and path. It returns a dictionary with these components. If the URL doesn't match the expected format, it raises a `ValueError`.
 
-Add the following code into a new cell:
+- **`download_and_save_file(file_url, lakehouse_save_path)`**: This function downloads a file from the given `file_url` and saves it to `lakehouse_save_path` in the Lakehouse. It creates the necessary directories if they don't exist and handles HTTP errors by printing messages.
+
+- **`download_contents(contents, base_save_path)`**: This function takes a list of contents (files and directories) from the GitHub API and recursively downloads each item. For files, it calls `download_and_save_file`; for directories, it calls itself recursively after fetching the contents of the subdirectory.
+
+#### 3. Define Helper Variables
+
+Next, we'll define some helper variables that we'll use later.
 
 ```python
-# create folder for includes (Markdown file location)
-INCLUDES_PATH=f"{LEARN_MODULE_PATH}/includes"
-os.makedirs(INCLUDES_PATH, exist_ok=True)
+# User Input: GitHub URL (Please ensure the repository includes an 'includes' folder)
+GITHUB_URL = "<ENTER REPO URL>"
+
+# Parse the GitHub URL
+parsed_url = parse_github_url(GITHUB_URL)
+
+OWNER = parsed_url['owner']
+REPO = parsed_url['repo']
+BRANCH = parsed_url['branch']
+REPO_PATH = parsed_url['path']  # The path within the repo
+
+# Define GitHub API URL
+GITHUB_API_URL = "https://api.github.com/repos"
+
+# For constructing the source URL, extract the module name
+MODULE_NAME = os.path.basename(os.path.dirname(REPO_PATH))
+
+# For local storage paths
+LAKEHOUSE_FILE_PATH = "Files"
+MARKDOWN_PATH = f"{LAKEHOUSE_FILE_PATH}/markdown"
+
+# Adjust includes_folder_path
+includes_folder_path = f"{MARKDOWN_PATH}/{REPO_PATH}"
+
+# Verify the paths
+print(f"includes_folder_path: {includes_folder_path}")
+print(f"LEARN_MODULE_PATH: {REPO_PATH}")
+print(f"MODULE_NAME: {MODULE_NAME}")
 ```
 
-On the left side pane of the notebook, you should see the folder structure created in the Lakehouse. In the Explorer, select Lakehouses, then Files, and you should see the `markdown` folder tree structure we've just created.
+**Explanation:**
+
+- **`GITHUB_URL`**: Replace `<ENTER REPO URL>` with your GitHub repository URL. For example:
+
+  ```python
+  GITHUB_URL = "https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric/includes"
+  ```
+
+- We use `parse_github_url` to extract necessary components from the GitHub URL.
+
+- **`OWNER`**, **`REPO`**, **`BRANCH`**, **`REPO_PATH`**: Variables extracted from the URL, used to construct API calls.
+
+- **`GITHUB_API_URL`**: Base URL for GitHub API requests.
+
+- **`MODULE_NAME`**: Extracted from `REPO_PATH`, used for naming purposes.
+
+- **`LAKEHOUSE_FILE_PATH`** and **`MARKDOWN_PATH`**: Define where files will be stored in the Lakehouse.
+
+- **`includes_folder_path`**: Specific path to the 'includes' folder in the Lakehouse.
+
+- The print statements help verify that paths are set correctly.
+
+#### 4. Download the Data from GitHub to Your Lakehouse
+
+Now, we'll use the helper functions and variables to download the data from GitHub to your Lakehouse.
+
+```python
+# Construct the Lakehouse base save path for the module
+lakehouse_module_path = f"{MARKDOWN_PATH}/{REPO_PATH}"
+# Create the base directory in Lakehouse
+mssparkutils.fs.mkdirs(lakehouse_module_path)
+
+# Get the contents of the folder via GitHub API
+api_url = f"{GITHUB_API_URL}/{OWNER}/{REPO}/contents/{REPO_PATH}?ref={BRANCH}"
+response = requests.get(api_url)
+if response.status_code == 200:
+    contents = response.json()
+    download_contents(contents, lakehouse_module_path)
+else:
+    print(f"Failed to list contents of {REPO_PATH}: HTTP {response.status_code}")
+    print(f"Response: {response.text}")
+```
+
+**Explanation:**
+
+- **`lakehouse_module_path`**: Specifies where in the Lakehouse the module will be saved.
+
+- We create the directory in the Lakehouse using `mssparkutils.fs.mkdirs`.
+
+- We construct the GitHub API URL to retrieve the contents of the specified repository path.
+
+- If the API call is successful, we parse the JSON response and call `download_contents` to download all files.
+
+#### 5. List Markdown Files in the Includes Folder
+
+Finally, we'll list all the markdown files in the `includes` folder to verify that the files have been downloaded successfully.
+
+```python
+# List markdown files in the includes folder
+if mssparkutils.fs.exists(includes_folder_path):
+    file_list = mssparkutils.fs.ls(includes_folder_path)
+    # Filter for markdown files
+    md_files = [file_info for file_info in file_list if file_info.name.endswith('.md')]
+    print(f"Markdown files found: {[file_info.name for file_info in md_files]}")
+else:
+    print(f"Directory does not exist: {includes_folder_path}")
+    md_files = []  # Handle the error accordingly
+```
+
+**Explanation:**
+
+- We check if the `includes_folder_path` exists in the Lakehouse.
+
+- If it does, we list all files in that directory.
+
+- We filter the list to include only markdown files (`.md` files).
+
+- We print out the names of the markdown files found.
+
+---
+
+**Remember to Run Each Cell Sequentially**
+
+Make sure to run each cell in order. This ensures that all functions and variables are defined before they're used. Going forward, it is expected that you run each cell in the notebook to execute the code.
+
+On the left side pane of the notebook, you should see the folder structure created in the Lakehouse. In the Explorer, select Lakehouses, then Files, and you should see the markdown folder tree structure we've just created and the markdown files in the includes folder.
 
 ![Screenshot of the Lakehouse Explorer with the markdown folder](assets/lakehouse-explorer-markdown.png)
 
-## Fetch the markdown data
+If you go back to the Microsoft Learn GitHub repository, you will see that the Markdown files are stored in the `includes` folder. 
+
+
+### Log Messages
+
+![Screenshot of the the Module Log messages](assets/module-log-messages.png)
 
 Now that we have the folder structure in place, we can start downloading the Markdown files. If you look at the units in the `index.yml` file, you will see that each unit has a unique identifier. We can use this identifier to fetch the Markdown file from the Microsoft Learn GitHub repository. 
 
-```yaml
- 'units': ['learn.wwl.get-started-kusto-fabric.introduction',
-  'learn.wwl.get-started-kusto-fabric.define-real-time-analytics',
-  'learn.wwl.get-started-kusto-fabric.describe-kusto-databases-tables',
-  'learn.wwl.get-started-kusto-fabric.write-queries-kusto-query-language',
-  'learn.wwl.get-started-kusto-fabric.exercise-use-kusto-query-data-onelake',
-  'learn.wwl.get-started-kusto-fabric.knowledge-check',
-  'learn.wwl.get-started-kusto-fabric.summary'],
-```
-
-So if we want to fetch the `introduction` unit, we have to build the following URL: `https://raw.githubusercontent.com/MicrosoftDocs/learn/main/learn-pr/wwl/get-started-kusto-fabric/includes/1-introduction.md`. Note that the unit identifier is prefixed with a number, which is the order of the unit in the `index.yml` file.
-
-Add the following code into a new cell:
-
-```python
-# list to keep track of the files
-file_list = []
-
-i = 0
-for u in module_units:
-    i += 1
-    
-    # get the unit identifier (introduction, define-real-time-analytics, etc.)
-    include = u.rsplit(".")[-1]
-
-    # skip the summary, exercise, and knowledge-check units
-    if include == "summary" or include == "exercise" or include == "knowledge-check":
-        continue
-
-    include_unit = f"{i}-{include}"
-    
-    # fetch module includes (the actual Markdown files)
-    include_url = f"{LEARN_GITHUB_BASE}/wwl/get-started-kusto-fabric/includes/{include_unit}.md"
-    include_response = requests.get(include_url)
-
-    # File name is the last part of the URL
-    include_filename = include_url.rsplit("/")[-1]
-    markdown_file = os.path.join(INCLUDES_PATH, include_filename)
-
-    # Save the file to the Lakehouse
-    with open(markdown_file, "wb") as f:
-        f.write(include_response.content)
-    
-    # keep track of the files
-    file_list.append({"file": markdown_file, "source": include_unit})
-
-file_list
-```
-
-If you go back to the Lakehouse Explorer, you should see the Markdown files in the `includes` folder. Select the three dots next to the `includes` folder and select `Refresh` to see the files.
-
-![Screenshot of the Lakehouse Explorer with the includes folder](assets/lakehouse-explorer-includes.png)
-
----
 
 # Generate Flashcards using Azure OpenAI
 
@@ -260,20 +366,34 @@ Now that we have the Markdown files in our Lakehouse, we can use Azure OpenAI to
 
 </div>
 
-On your notebook, add the following code to configure the Azure OpenAI client:
+
+To set up Azure OpenAI, add the following code to your notebook in a new cell:
 
 ```python
-import openai
-from notebookutils.mssparkutils.credentials import getSecret
 
-KEYVAULT_ENDPOINT = "https://{your-vault}.vault.azure.net/"
+# Azure OpenAI configuration (replace with your actual credentials)
 
-openai.api_key = getSecret(KEYVAULT_ENDPOINT, "your-openai-keyvault-secret-key")
+# If you have Azure Keyvault set up (uncomment the code below)
+# from notebookutils.mssparkutils.credentials import getSecret
+# KEYVAULT_ENDPOINT = "https://{your-vault}.vault.azure.net/"
+# AZURE_OPENAI_API_KEY = getSecret(KEYVAULT_ENDPOINT, "your-openai-keyvault-secret-key")
 
-openai.api_base = "https://{your-openai-endpoint}.openai.azure.com/"
-openai.api_type = 'azure'
-openai.api_version = '2023-05-15'
-deployment_name='sk-tests'
+# Else just use this code if you dont have Azure Keyvault setup
+AZURE_OPENAI_API_KEY = "<YOUR_AZURE_OPENAI_API_KEY>"
+AZURE_OPENAI_ENDPOINT = "https://<YOUR_AZURE_OPENAI_ENDPOINT>.openai.azure.com/"
+AZURE_OPENAI_API_VERSION = "<YOUR_MODEL_VERSION>"
+AZURE_OPENAI_CHAT_DEPLOYMENT = "<YOUR_DEPLOYMENT_NAME>"
+
+# Setup Azure OpenAI 
+from openai import AzureOpenAI
+
+client = AzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=AZURE_OPENAI_API_VERSION
+)
+
+deployment_name = AZURE_OPENAI_CHAT_DEPLOYMENT
 ```
 
 ## Create the Flashcards Prompt
@@ -297,14 +417,13 @@ The flashcard PDF generator app expects a list with the following shape, contain
 To generate a JSON like that, add the following code to your notebook in a new cell:
 
 ```python
+# ----------------- Define the LearnAssistant Class -----------------
+
+# Create the Flashcards Prompt
 class LearnAssistant:
 
-    _openai = None
-    _deployment_name = None
-
-    def __init__(self, openai, deployment_name):
-        self.name = "Learn Assistant"
-        self._openai = openai
+    def __init__(self, client, deployment_name):
+        self._openai = client
         self._deployment_name = deployment_name
 
     def generate_questions(self, text):
@@ -318,24 +437,19 @@ class LearnAssistant:
         """
         user_message = text
 
-        return self.call_openai(
-            self._deployment_name, 
-            system_message=system_message,
-            user_message=user_message
-        )
-    
-    def call_openai(self, deployment_name, system_message, user_message):
-        response = self._openai.ChatCompletion.create(
-            engine=deployment_name,
+        return self.call_openai(system_message, user_message)
+
+    def call_openai(self, system_message, user_message):
+        response = self._openai.chat.completions.create(
+            model=self._deployment_name,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_message}
             ]
         )
 
-        return response['choices'][0]['message']['content']
+        return response.choices[0].message.content
 ```
-
 The key part of this code is the prompt:
 
 ```python
@@ -353,57 +467,98 @@ The idea is to tell the model to only generate questions and answers based on th
 ## Generate the flashcards
 
 ```python
+
+# List to keep track of the generated QAs
 import json
+import re
+import uuid
 
-# this is required for the QR code public URL generation
-STORAGE_ACCOUNT="<your-storage-account-name>"
+# Azure Storage Account (replace with your actual storage account name & QR_Code container name in your storage account)
+STORAGE_ACCOUNT = "flashcardsworkshop"
+QRCODES_CONTAINER_NAME = "qr-codes"
 
-# list to keep track of the generated QAs
 QAS = []
-
-# get the module name
-module_name = module_uid.split(".")[-1]
 flash_card_id = 1
 
-for entry in file_list:
-  file = entry["file"]
-  source = entry["source"]
-  print(file)
-  with open(file, "r") as f:
-      input_text = f.read()
-      genQas = LearnAssistant(openai, deployment_name).generate_questions(input_text)
-      print(genQas)
+# Initialize the LearnAssistant
+assistant = LearnAssistant(client, deployment_name)
 
-      # convert the generated questions and answers to a list
-      temp = json.loads(genQas)
+# Loop through each markdown file
+for file_info in md_files:
+    file_path = file_info.path
 
-      # get the module name
-      module_name = module_uid.split(".")[-1]
-      
-      # create the source URL to the Microsoft Learn module
-      source_url = f"https://learn.microsoft.com/training/modules/{module_name}/{source}"
+    # Read the file content using mssparkutils.fs.head
+    try:
+        if file_info.size > 0:
+            content = mssparkutils.fs.head(file_path, file_info.size)
+        else:
+            content = ''
+        
+        # Generate questions and answers
+        gen_qas = assistant.generate_questions(content)
 
-      # create the QR code URL pointing to your Azure Blob Storage account
-      qr_url = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net/qrcodes/{flash_card_id}.png"
-      
-      # add the module name and source URL to the QAs
-      for t in temp:
+         # Remove code block markers if present
+        gen_qas = re.sub(r'^```(?:json)?\s*', '', gen_qas)  # Remove opening code block
+        gen_qas = re.sub(r'```$', '', gen_qas)  # Remove closing code block
 
-          card = {
-            "id": flash_card_id, 
-            "question": t["Q"], 
-            "answer": t["A"], 
-            "category_name": "Real-Time",
-            "source_url": source_url,
-            "qr_url": qr_url
-          }
+        # Trim the response
+        gen_qas = gen_qas.strip()
 
-          QAS.append(card)
-          flash_card_id += 1
-  
-  
-with open(f"{LAKEHOUSE_FILE_PATH}/generated-QAs.json", "w") as fp:
-    json.dump(QAS , fp)
+        # Convert the generated questions and answers to a list
+        try:
+            temp = json.loads(gen_qas)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON for {file_info.name}: {e}")
+            print(f"OpenAI Response: {gen_qas}")
+            continue  # Skip to the next file
+        
+        # Get the base filename without extension
+        base_name = os.path.splitext(file_info.name)[0]
+        
+        # Construct the source URL
+        source_url = f"https://learn.microsoft.com/training/modules/{MODULE_NAME}/{base_name}"
+        
+        # Create the QR code URL pointing to your Azure Blob Storage account
+        # qr_url = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net/{QRCODES_CONTAINER_NAME}/{unique_filename}.png"
+        
+        # Add the generated QAs to the list
+        for t in temp:
+            
+
+            # Generate a unique filename using UUID
+            unique_filename = f"{flash_card_id}_{uuid.uuid4()}.png"
+            
+            # Create the QR code URL pointing to your Azure Blob Storage account with the unique filename
+            qr_url = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net/{QRCODES_CONTAINER_NAME}/{unique_filename}"
+            
+            card = {
+                "id": flash_card_id, 
+                "question": t["Q"], 
+                "answer": t["A"], 
+                "category_name": "Real-Time",
+                "source_url": source_url,
+                "qr_url": qr_url
+            }
+            QAS.append(card)
+            flash_card_id += 1
+    
+    except Exception as e:
+        print(f"Error processing {file_info.name}: {e}")
+        continue  # Skip to the next file
+
+# Convert QAS to JSON string
+qas_json = json.dumps(QAS, indent=2)
+
+# Define the path where you want to save the JSON file
+GENERATED_QAS_PATH = f"{LAKEHOUSE_FILE_PATH}/generated-QAs.json"
+
+# Save the generated QAs to a JSON file in the Lakehouse
+try:
+    mssparkutils.fs.put(GENERATED_QAS_PATH, qas_json, overwrite=True)
+    print(f"Generated QAs have been saved to {GENERATED_QAS_PATH}")
+except Exception as e:
+    print(f"Error saving generated QAs: {e}")
+
 ```
 
 As the code runs, you should see the generated questions and answers in the output. The questions and answers are stored in the `QAS` list, which is then saved in the Lakehouse to a JSON file called `generated-QAs.json`.
@@ -416,38 +571,32 @@ As the code runs, you should see the generated questions and answers in the outp
 
 ## Create the Flashcards QR Codes
 
-Now that we have the questions and answers, we can generate QR codes for each flashcard. The QR code will point to the source material in the Microsoft Learn GitHub repository. In this way we follow [Responsible AI practices](https://www.microsoft.com/en-us/ai/responsible-ai) by providing the source material for each flashcard, so not only the user can learn more about the topic but also know where the LLM model got the information from.
+Now that we have the questions and answers, we can generate QR codes for each flashcard. The QR code will point to the source material in the Microsoft Learn GitHub repository. In this way we follow [Responsible AI](https://learn.microsoft.com/legal/cognitive-services/openai/overview?WT.mc_id=javascript-76678-cxa) practices by providing the source material for each flashcard, so not only the user can learn more about the topic but also know where the LLM model got the information from.
 
-Add the following code to your notebook in a new cell to have a folder to store the QR codes:
+Using the `qrcode` library we installed at the beginning, we can generate the QR codes for each flashcard. The source URL for the QR code is the URL to the Microsoft Learn module unit.
 
-```python
-import os
-
-# Path to QR Codes
-QR_CODE_PATH = f"{LAKEHOUSE_FILE_PATH}/qrcodes"
-os.makedirs(QR_CODE_PATH, exist_ok=True)
-```
-
-## Load the generated QAs
-
-Then we import the generated QAs from the JSON file we created before:
+to install the qrcode library, run the following command:
 
 ```python
-import json
-
-with open(f"{LAKEHOUSE_FILE_PATH}/generated-QAs.json", "r") as fp:
-    QAS = json.load(fp)
-
-QAS
+!pip install qrcode
 ```
 
 ## Generate the QR codes images
 
 Using the `qrcode` library we installed at the beginning, we can generate the QR codes for each flashcard. The source URL for the QR code is the URL to the Microsoft Learn module unit.
 
+Add the following code to your notebook in a new cell to generate QR codes: 
+
 ```python
+
+# Path to store QR codes in Lakehouse
+import tempfile
 import qrcode
 
+QR_CODE_PATH = f"{LAKEHOUSE_FILE_PATH}/qrcodes"
+mssparkutils.fs.mkdirs(QR_CODE_PATH)
+
+# Loop through each flashcard and generate a QR code
 for qa in QAS:
     qr = qrcode.QRCode(
         version=1,
@@ -459,19 +608,137 @@ for qa in QAS:
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white")
-    img.save(f"{QR_CODE_PATH}/{qa['id']}.png")
-```
+
+    # Save the QR code image to a temporary local file
+    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+        img.save(tmp_file.name)
+        tmp_file_path = tmp_file.name
     
-If you go back to the Lakehouse Explorer, you should see the QR codes in the `qrcodes` folder. Select the three dots next to the `qrcodes` folder and select `Refresh` to see the files.
+    # Extract the unique filename from the QR URL
+    qr_filename = qa["qr_url"].split('/')[-1]
 
-![Screenshot of the Lakehouse Explorer with the qrcodes folder](assets/lakehouse-explorer-qrcodes.png)
+   # Define the Lakehouse path where the QR code image will be stored using the unique filename
+    qr_file_path = f"{QR_CODE_PATH}/{qr_filename}"
 
-Go back to your workspace, select the `flashcards_workshop` Lakehouse, and then select the `Files` tab. You should see the `qrcodes` folder with the QR codes (select `Refresh` if they are not loaded). If you select a QR code, you can see the content of the QR code in the preview pane.
+    # Copy the local file to the Lakehouse using mssparkutils.fs.cp()
+    # The local file path needs to start with "file:"
+    local_file_uri = f"file:{tmp_file_path}"
 
-![Screenshot of a QR code in the Lakehouse Explorer](assets/lakehouse-explorer-qrcode.png)
+    mssparkutils.fs.cp(local_file_uri, qr_file_path, recurse=False)
+
+    # Optionally, delete the temporary file
+    os.remove(tmp_file_path)
+```
+Now that you have your flashcards generated, it'd be great to see them in a tabular format so we can start previewing the content. A great tool to do that is Pandas, which allows us to read and display data in a structured way.
+
+**Import Necessary Libraries**
+
+First, we need to import the necessary libraries: Add the following code to your notebook in a new cell:
+
+```python
+import pandas as pd
+from io import StringIO
+from IPython.display import display
+
+```
+- `pandas`: A powerful data manipulation library.
+- `StringIO`: Allows us to read strings as file-like objects.
+- `display`: Used to display rich content in Jupyter notebooks.
+
+**Read the JSON Content**
+
+Next, we read the JSON content containing our flashcards from the Lakehouse. This allows us to load the data into a Pandas DataFrame for easy manipulation and display.
+    
+```python
+   # Read the JSON content from the Lakehouse
+qas_content = mssparkutils.fs.head(GENERATED_QAS_PATH)
+df = pd.read_json(StringIO(qas_content))
+```
+
+- `mssparkutils.fs.head(GENERATED_QAS_PATH)`: Reads the content of the JSON file from the specified path.
+- `pd.read_json()`: Converts the JSON content into a Pandas DataFrame.
+
+**Make URLs Clickable**
+
+To enhance the usability of our table, we'll make the URLs in the `source_url` and `qr_url` columns clickable.
+
+First, define a function that converts a URL string into an HTML anchor tag:
+
+```python
+# Function to make URLs clickable
+def make_clickable(val):
+    return f'<a href="{val}" target="_blank">{val}</a>'
+```
+
+- `make_clickable`: Formats the URL so that it becomes a clickable link that opens in a new tab.
+
+**Apply the Function and Style the DataFrame**
+
+Now, we'll apply the make_clickable function to the relevant columns and set the 'id' column as the index to organize our data better. We'll use Pandas Styler to format the DataFrame for better readability
+
+```python
+# Set 'id' as the index to avoid duplicate numbering
+df.set_index('id', inplace=True)
+
+# Create the Pandas Styler and format the clickable links
+styler = df.style.format({'source_url': make_clickable, 'qr_url': make_clickable})
+
+```
+
+- `df.set_index('id', inplace=True)`: Sets the 'id' column as the index of the DataFrame.
+
+- `df.style.format():` Applies the formatting function to specified columns.
+
+**Adjust the Alignment & Display the DataFrame**
+
+To improve the visual layout, we'll left-align all the text in the DataFrame. Finally, we display the styled DataFrame using the display function.
+
+```python
+# Left-align all columns
+styler = styler.set_properties(**{'text-align': 'left'})
+
+# Adjust the header alignment
+styler = styler.set_table_styles([{
+    'selector': 'th',
+    'props': [('text-align', 'left')]
+}])
+
+# Display the DataFrame with clickable links and left-aligned text
+display(styler)
+```
+
+- ` set_properties()`: Sets CSS properties for the DataFrame cells.
+- `set_table_styles()`: Applies CSS styles to the table elements.
+
+
+![Screenshot of the Flashcards in a tabular format](assets/flashcards-table.png)
+
+To see the qr codes, run the following code:
+
+```python
+# Display all QRCODES
+from pyspark.sql.functions import input_file_name
+from IPython.display import Image, display
+
+# Define the path to the QR codes in the Lakehouse
+LAKEHOUSE_FILE_PATH = "Files"  # Adjust if different
+QR_CODE_PATH = f"{LAKEHOUSE_FILE_PATH}/qrcodes"
+
+# Read the QR code images as binary files
+df = spark.read.format("binaryFile").load(f"{QR_CODE_PATH}/*.png")
+
+# Collect the image data
+image_data_list = df.select("content").collect()
+
+# Display the images
+for image_data_row in image_data_list:
+    image_data = image_data_row.content
+    display(Image(data=image_data))
+```
 
 Try scanning the QR code with your phone to see how it leads to the source material in Microsoft Learn.
 
+![Screenshot of a QR codes](assets/scan-qrcodes.png)
 ---
 
 # Create a Fabric Data Pipeline
@@ -480,70 +747,102 @@ Now that we have the flashcards and the QR codes, we can run a [data pipeline](h
 
 Select the `Home` button to go back to the Data Engineering experience. Select `Data pipeline` to create a new data pipeline. Give it the name `flashcards_pipeline`, and then select `Create`.
 
-![Screenshot of the New Data Pipeline dialog in the Synapse Data Engineering tab](assets/new-data-pipeline.png)
+![Screenshot of the New Data Pipeline dialog in the Synapse Data Engineering tab](assets/new-lakehouse.png)
+
+
 
 ## Copy the QR Codes to Azure Blob Storage
 
-In the pipeline, select "Add pipeline activity" to start building the pipeline with a blank canvas. In the contextual menu, select "Copy data" to add a new activity.
+In the pipeline, select `Pipeline activity` to start building the pipeline with a blank canvas. In the contextual menu, select "Copy data" to add a new activity.
 
-Name the activity `Copy QR Codes to Azure Blob Storage`. 
+![Screenshot of the New Data Pipeline Activity](assets/pipeline-activity.png)
+
+- Name the activity `Copy QR Codes to Azure Blob Storage`.
+- Give a description of the activity.
+
+![Screenshot of the New Data Pipeline General Configuration](assets/pipeline-general.png)
 
 In the source dataset, select the following options:
-
-- Data store type: `Workspace`
-- Workspace data store type: `Lakehouse`
-- Lakehouse: `flashcards_workshop`
+- Connection : select `flashcards_workshop`
 - Root folder: `Files`
+- File path type : browse inside `qrcodes` folder
+- File path: `QR Codes`
+- File format: `Binary`
 
-Then select browse and select the `qrcodes` folder. The browser should show the QR codes in the `qrcodes`. Select "OK".
+![Screenshot of the Source Connection configuration in the pipeline](assets/data-pipeline-source.png)
 
-![Screenshot of browsing for the QR code folder in the pipeline](assets/data-pipeline-source-qrcodes.png)
+Let's shift to Azure and create a storage account to store the QR codes.
 
-In the destination, select `External`, and then `New`. In the new connection wizard, select `Azure Blob Storage` and then `Continue`. Fill in the required information to connect to your Azure Blob Storage account. 
+Destination : this is where we will copy the data to.
 
-![Screenshot of the New Connection dialog in the pipeline](assets/data-pipeline-connection.png)
+On azure create a storage account, 
+- name = `flashcardsstorage`
+- Primary service = `Azure Blob Storage or Azure Data Lake Storage Gen2`
+- Perfomance = `Standard`
+- Replication = `Locally-redundant storage (LRS)`
+-  Access tier = `Hot`
+- Networking = `Public endpoint`
+- Encryption type = `Microsoft managed key`
+- Tags = `None` or add your preferred tags
 
-For example:
+Click Review + create, and then  Create.
+
+![Screenshot of Storage Account Provisioning on Azure Portal](assets/create-storage-account.png)
+
+- Go `settings`, under `configuration` enable `Allow Blob anonymous access`
+
+![Screenshot of Allow blob anonymous access in Storage Account Containers on Azure Portal](assets/azure-blob-storage-anonymous-access.png)
+
+- Go to the storage account and select `Containers` and create a new container
+- name `qr-codes`
+- Anonymous access level : `Blob(Anonymous read access for blobs only)` 
+- Do the same for container name `generated-qas`. Make sure to select `Blob(Anonymous read access for blobs only)` 
+
+![Screenshot of Storage Account Containers on Azure Portal](assets/azure-blob-storage-containers.png)
+
+- Copy your Access key and the storage account name = `flashcardsstorage` and go back to the pipeline.
+
+![Screenshot of Storage Account Access Keys on Azure Portal](assets/azure-blob-storage-access-token.png)
+
+
+Back to the pipeline, in the destination dataset, select the following options:
+
+- Connection : click more and search for `Azure Blob Storage`
+
+![Screenshot of Searching the Azure Blobs on LakeHouse ](assets/search-azure-blob.png)
+
+- connect data destination: add account name = `flashcardsstorage`, authentication kind = `Account key`, Account key = `your copied access token`
 
 ![Screenshot of the New Connection settings](assets/data-pipeline-connection-azure-blob.png)
 
-Connection settings:
+Let's continue with the destination configuration
+- Add the container name :`qr-codes`
+- click `Run` to save and start the pipeline.
+- Make sure the pipeline runs successfully.
 
-- Account name or URL: `flashcards`
 
-Connection credentials:
+![Screenshot of the data pipeline success run](assets/data-pipeline-qr-code-run-success.png)
 
-- Connection: Create new connection
-- Connection name: FlashCards Azure Blob Storage
-- Data gateway: none
-- Authentication method: Shared Access Signature (SAS)
-- SAS token: `your SAS token`
+- Go to the storage account and select the container `qr-codes` to see the copied QR codes.
 
-Select `Create` to create the connection. You can select the `Test connection` button to verify the connection.
-
-In File path, select `browse`, and then select the folder where you want to copy the QR codes. For example, you can create a new folder called `qrcodes` in your Azure Blob Storage account and then browse to that as you configure the destination.
-
-![Screenshot of the New Connection dialog in the pipeline](assets/data-pipeline-destination-qrcodes.png)
-
-Back in the pipeline editor, select the Save button to save the pipeline activity.
+![Screenshot of the qrcodes in azure blob storage](assets/qrcodes-images.png)
 
 ## Copy the JSON Data to Azure Blob Storage
 
-Now you are going to create a new activity to copy the JSON data to Azure Blob Storage. In the activity you just create select the `Add activity` arrow button and then select `Copy data`.
+Repeat the same process to copy the JSON data to Azure Blob Storage.
+- In the same pipeline, go to `activities`, `copy data`, and `add to canvas`.
+- In general, give a name = `Copy JSON file to Azure Blob Storage`, description = `Copy JSON file to Azure Blob Storage`
+- Source dataset: connection = `flashcards_workshop`, root folder = `Files`, file path = generated-QAs.json, file format = `JSON`, filepath(containers) = `generated-qas`, file format = `JSON`
+- Destination dataset: connection = your previous connection, file path = `generated-qas`, file format = `JSON`
+- Go to home menu.
+- click `Run` to save and start the pipeline.
+- Make sure the pipeline runs successfully.
 
-Name the activity `Copy JSON file to Azure Blob Storage`. Setup the source dataset like in the previous activity, but this time select the `generated-QAs.json` file.
+![Screenshot of the qrcode-pipeline success run](assets/qrcode-pipeline-run-success.png)
 
-In the destination, select the same Azure Blob Storage account you created before, and then select the folder where you want to copy the JSON file, fir example, a folder called `json`. Save the pipeline.
+Once the pipeline is finished, you can go to your Azure Blob Storage account and see the files copied there in generated-qas container.
 
-## Run the pipeline
-
-Select the `Run` button to run the pipeline. You can monitor the progress of the pipeline in the `Output` tab. First the QR codes will be copied to Azure Blob Storage, and then the JSON file.
-
-![Screenshot of the pipeline running](assets/data-pipeline-running.png)
-
-Once the pipeline is finished, you can go to your Azure Blob Storage account and see the files copied there.
-
-![Screenshot of the Azure Blob Storage account with the qrcodes and json folders](assets/azure-blob-storage.png)
+![Screenshot of the generated QAS.json in azure blob storage](assets/generated-file.png)
 
 ---
 
