@@ -97,9 +97,15 @@ Once the notebook is created, select the `Save as` icon and save the notebook as
 
 # Import Data to your Lakehouse
 
-Let's say we want to practice our knowledge on the [Get started with Real-Time Analytics in Microsoft Fabric](https://learn.microsoft.com/training/modules/get-started-kusto-fabric/?WT.mc_id=javascript-76678-cxa) module. The source material for this module is available in the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/). In this case navigate to the module folder [learn-pr/wwl/get-started-kusto-fabric](https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric). There you will find an includes folder that contains the files in the module. This is a list all the modules in their respective Markdown files.
+The first step is to import the data from an external source into your Lakehouse. For this workshop, we will use Microsoft Learn modules as our source material. We'll fetch the learn module Markdown files from the Microsoft Learn GitHub repository and import them into our Lakehouse.
 
-![Microsoft Learn GitHub](assets/microsoft-learn.png)
+![Screenshot of the Microsoft Learn docs](/assets/microsoft-learn.png)
+
+# Setup the Lakehouse folder structure
+
+Let's say we want to practice our knowledge on the [Get started with Real-Time Analytics in Microsoft Fabric](https://learn.microsoft.com/training/modules/get-started-kusto-fabric/?WT.mc_id=javascript-76678-cxa) module. The source material for this module is available in the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/). In this case navigate to the module folder [learn-pr/wwl/get-started-kusto-fabric](https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric). There you will find an includes folder that contains the files in the module. This is a list of all the units in their respective Markdown files. Learn Modules are made of units.
+
+![This is a screenshot of Microsoft Learn GitHub](assets/microsoft-learn.png)
 
 Copy the git repository URL. In this case, the URL is `https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric/includes`.
 
@@ -110,32 +116,49 @@ Copy the git repository URL. In this case, the URL is `https://github.com/Micros
 
 #### Install Dependencies
 
-add the following code to the first cell to install qrcode library
+On your notebook, add the following code to install qrcode and openai library
 
 ```python
 %pip install qrcode
+%pip install openai
 ```
-We are going to use the qrcode library to generate the QR codes for the flashcards. We do this as a first step, because once the library is installed, the notebook will automatically restart the kernel to make the library available for the rest of the code.
+We are going to use openai to generate questions & answers. Qrcode will be used to generate the QR codes for the flashcards. We do this as a first step, because once the library is installed, the notebook will automatically restart the kernel to make the library available for the rest of the code.
 
-### Copy the data to your Lakehouse
-Add the following code to your notebook into a new cell:
+### Copy the Data to Your Lakehouse
+
+In this section, we'll copy data from a GitHub repository to your Lakehouse.
+
+#### 1. Import Necessary Libraries
+
+First, import the libraries we'll use throughout the tutorial. Add the following code to your notebook into a new cell (going forward please repeat this process for each code block):
+
 ```python
-# 1. Set up variables and paths
 from notebookutils import mssparkutils
 import requests
 import os
 import re
 import qrcode
+```
 
-# ----------------- User Input -----------------
+**Explanation:**
 
-# User Input: GitHub URL (Please make sure the Ms Learn URL Repo have includes folder ie below URL)
-# GITHUB_URL = "https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric/includes"
-GITHUB_URL = "<ENTER URL REPO>"
+- **`mssparkutils`**: Utilities for interacting with Microsoft Spark environments.
+- **`requests`**: For making HTTP requests to the GitHub API.
+- **`os`**: For interacting with the operating system.
+- **`re`**: For regular expressions.
+- **`qrcode`**: For generating QR codes (if needed later).
 
-# ----------------- Parse GitHub URL -----------------
+#### 2. Define Helper Functions
+
+Now we'll define all the helper functions we'll use throughout the tutorial.
+
+```python
+# Helper Functions
 
 def parse_github_url(url):
+    """
+    Parses a GitHub URL and extracts the owner, repository name, branch, and path.
+    """
     pattern = r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/tree/(?P<branch>[^/]+)/(?P<path>.+)"
     match = re.match(pattern, url)
     if match:
@@ -143,37 +166,10 @@ def parse_github_url(url):
     else:
         raise ValueError("Invalid GitHub URL format.")
 
-# Parse the GitHub URL
-parsed_url = parse_github_url(GITHUB_URL)
-
-OWNER = parsed_url['owner']
-REPO = parsed_url['repo']
-
-BRANCH = parsed_url['branch']
-REPO_PATH = parsed_url['path']  # The path within the repo
-
-# Define GitHub API URL
-GITHUB_API_URL = "https://api.github.com/repos"
-
-# For constructing the source URL, extract the module name
-MODULE_NAME = os.path.basename(os.path.dirname(REPO_PATH))
-
-# For local storage paths
-LAKEHOUSE_FILE_PATH = "Files"
-MARKDOWN_PATH = f"{LAKEHOUSE_FILE_PATH}/markdown"
-
-# Adjust includes_folder_path
-includes_folder_path = f"{MARKDOWN_PATH}/{REPO_PATH}"
-
-# Verify the paths
-print(f"includes_folder_path: {includes_folder_path}")
-print(f"LEARN_MODULE_PATH: {REPO_PATH}")
-print(f"MODULE_NAME: {MODULE_NAME}")
-
-# ----------------- Download Functions -----------------
-
-# Function to download and save files
 def download_and_save_file(file_url, lakehouse_save_path):
+    """
+    Downloads a file from GitHub and saves it to the specified path in the Lakehouse.
+    """
     try:
         response = requests.get(file_url)
         if response.status_code == 200:
@@ -188,8 +184,10 @@ def download_and_save_file(file_url, lakehouse_save_path):
     except Exception as e:
         print(f"Error downloading {file_url}: {e}")
 
-# Function to recursively download contents
 def download_contents(contents, base_save_path):
+    """
+    Recursively downloads contents from a GitHub repository and saves them to the Lakehouse.
+    """
     for item in contents:
         if item['type'] == 'file':
             file_name = item['name']
@@ -212,42 +210,135 @@ def download_contents(contents, base_save_path):
                 download_contents(sub_contents, sub_base_save_path)
             else:
                 print(f"Failed to list contents of {sub_dir_path}: HTTP {sub_response.status_code}")
+```
 
-# Main execution
-def main():
-    # Construct the Lakehouse base save path for the module
-    lakehouse_module_path = f"{MARKDOWN_PATH}/{REPO_PATH}"
-    # Create the base directory in Lakehouse
-    mssparkutils.fs.mkdirs(lakehouse_module_path)
-    
-    # Get the contents of the folder via GitHub API
-    api_url = f"{GITHUB_API_URL}/{OWNER}/{REPO}/contents/{REPO_PATH}?ref={BRANCH}"
-    response = requests.get(api_url)
-    if response.status_code == 200:
-        contents = response.json()
-        download_contents(contents, lakehouse_module_path)
-    else:
-        print(f"Failed to list contents of {REPO_PATH}: HTTP {response.status_code}")
-        print(f"Response: {response.text}")
+**Explanation of Helper Functions:**
 
-# Run the main function
-main()
+- **`parse_github_url(url)`**: This function takes a GitHub URL and uses a regular expression to extract the owner, repository name, branch, and path. It returns a dictionary with these components. If the URL doesn't match the expected format, it raises a `ValueError`.
 
-# ----------------- List Markdown Files -----------------
+- **`download_and_save_file(file_url, lakehouse_save_path)`**: This function downloads a file from the given `file_url` and saves it to `lakehouse_save_path` in the Lakehouse. It creates the necessary directories if they don't exist and handles HTTP errors by printing messages.
 
-# 2. List markdown files in the includes folder
+- **`download_contents(contents, base_save_path)`**: This function takes a list of contents (files and directories) from the GitHub API and recursively downloads each item. For files, it calls `download_and_save_file`; for directories, it calls itself recursively after fetching the contents of the subdirectory.
+
+#### 3. Define Helper Variables
+
+Next, we'll define some helper variables that we'll use later.
+
+```python
+# User Input: GitHub URL (Please ensure the repository includes an 'includes' folder)
+GITHUB_URL = "<ENTER REPO URL>"
+
+# Parse the GitHub URL
+parsed_url = parse_github_url(GITHUB_URL)
+
+OWNER = parsed_url['owner']
+REPO = parsed_url['repo']
+BRANCH = parsed_url['branch']
+REPO_PATH = parsed_url['path']  # The path within the repo
+
+# Define GitHub API URL
+GITHUB_API_URL = "https://api.github.com/repos"
+
+# For constructing the source URL, extract the module name
+MODULE_NAME = os.path.basename(os.path.dirname(REPO_PATH))
+
+# For local storage paths
+LAKEHOUSE_FILE_PATH = "Files"
+MARKDOWN_PATH = f"{LAKEHOUSE_FILE_PATH}/markdown"
+
+# Adjust includes_folder_path
+includes_folder_path = f"{MARKDOWN_PATH}/{REPO_PATH}"
+
+# Verify the paths
+print(f"includes_folder_path: {includes_folder_path}")
+print(f"LEARN_MODULE_PATH: {REPO_PATH}")
+print(f"MODULE_NAME: {MODULE_NAME}")
+```
+
+**Explanation:**
+
+- **`GITHUB_URL`**: Replace `<ENTER REPO URL>` with your GitHub repository URL. For example:
+
+  ```python
+  GITHUB_URL = "https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric/includes"
+  ```
+
+- We use `parse_github_url` to extract necessary components from the GitHub URL.
+
+- **`OWNER`**, **`REPO`**, **`BRANCH`**, **`REPO_PATH`**: Variables extracted from the URL, used to construct API calls.
+
+- **`GITHUB_API_URL`**: Base URL for GitHub API requests.
+
+- **`MODULE_NAME`**: Extracted from `REPO_PATH`, used for naming purposes.
+
+- **`LAKEHOUSE_FILE_PATH`** and **`MARKDOWN_PATH`**: Define where files will be stored in the Lakehouse.
+
+- **`includes_folder_path`**: Specific path to the 'includes' folder in the Lakehouse.
+
+- The print statements help verify that paths are set correctly.
+
+#### 4. Download the Data from GitHub to Your Lakehouse
+
+Now, we'll use the helper functions and variables to download the data from GitHub to your Lakehouse.
+
+```python
+# Construct the Lakehouse base save path for the module
+lakehouse_module_path = f"{MARKDOWN_PATH}/{REPO_PATH}"
+# Create the base directory in Lakehouse
+mssparkutils.fs.mkdirs(lakehouse_module_path)
+
+# Get the contents of the folder via GitHub API
+api_url = f"{GITHUB_API_URL}/{OWNER}/{REPO}/contents/{REPO_PATH}?ref={BRANCH}"
+response = requests.get(api_url)
+if response.status_code == 200:
+    contents = response.json()
+    download_contents(contents, lakehouse_module_path)
+else:
+    print(f"Failed to list contents of {REPO_PATH}: HTTP {response.status_code}")
+    print(f"Response: {response.text}")
+```
+
+**Explanation:**
+
+- **`lakehouse_module_path`**: Specifies where in the Lakehouse the module will be saved.
+
+- We create the directory in the Lakehouse using `mssparkutils.fs.mkdirs`.
+
+- We construct the GitHub API URL to retrieve the contents of the specified repository path.
+
+- If the API call is successful, we parse the JSON response and call `download_contents` to download all files.
+
+#### 5. List Markdown Files in the Includes Folder
+
+Finally, we'll list all the markdown files in the `includes` folder to verify that the files have been downloaded successfully.
+
+```python
+# List markdown files in the includes folder
 if mssparkutils.fs.exists(includes_folder_path):
     file_list = mssparkutils.fs.ls(includes_folder_path)
     # Filter for markdown files
     md_files = [file_info for file_info in file_list if file_info.name.endswith('.md')]
+    print(f"Markdown files found: {[file_info.name for file_info in md_files]}")
 else:
     print(f"Directory does not exist: {includes_folder_path}")
     md_files = []  # Handle the error accordingly
-
 ```
-Run the cell.
 
-Going forward, it is expected that you run each cell in the notebook to execute the code.
+**Explanation:**
+
+- We check if the `includes_folder_path` exists in the Lakehouse.
+
+- If it does, we list all files in that directory.
+
+- We filter the list to include only markdown files (`.md` files).
+
+- We print out the names of the markdown files found.
+
+---
+
+**Remember to Run Each Cell Sequentially**
+
+Make sure to run each cell in order. This ensures that all functions and variables are defined before they're used. Going forward, it is expected that you run each cell in the notebook to execute the code.
 
 On the left side pane of the notebook, you should see the folder structure created in the Lakehouse. In the Explorer, select Lakehouses, then Files, and you should see the markdown folder tree structure we've just created and the markdown files in the includes folder.
 
@@ -275,15 +366,10 @@ Now that we have the Markdown files in our Lakehouse, we can use Azure OpenAI to
 
 </div>
 
-On your notebook, add the following code to install the openai library, run the following command:
 
-```python
-%pip install openai
-```
 To set up Azure OpenAI, add the following code to your notebook in a new cell:
 
 ```python
-# ----------------- Set up Azure OpenAI Client -----------------
 
 # Azure OpenAI configuration (replace with your actual credentials)
 
@@ -381,7 +467,6 @@ The idea is to tell the model to only generate questions and answers based on th
 ## Generate the flashcards
 
 ```python
-# ----------------- Generate the Flashcards -----------------
 
 # List to keep track of the generated QAs
 import json
@@ -503,7 +588,6 @@ Using the `qrcode` library we installed at the beginning, we can generate the QR
 Add the following code to your notebook in a new cell to generate QR codes: 
 
 ```python
-# ----------------- Generate the QR Codes -----------------
 
 # Path to store QR codes in Lakehouse
 import tempfile
@@ -544,53 +628,74 @@ for qa in QAS:
 
     # Optionally, delete the temporary file
     os.remove(tmp_file_path)
-
-print("Flashcards and QR codes generation completed.")
 ```
+Now that you have your flashcards generated, it'd be great to see them in a tabular format so we can start previewing the content. A great tool to do that is Pandas, which allows us to read and display data in a structured way.
 
-You should be able to message to show  modules were downloaded successfully
-![Screenshot of the Lakehouse Explorer with downloaded md files](assets/downloaded-modules.png)
+**Import Necessary Libraries**
 
-openai will generate the questions and answers for the modules
-
-![Screenshot of the Lakehouse Explorer with generated-questions](assets/generated-questions.png)
-
-If you go back to the Lakehouse Explorer, you should see the QR codes in the qrcodes folder. Select the three dots next to the qrcodes folder and select Refresh to see the files. To see the QR codes in the qrcodes folder. Select the three dots next to the qrcodes folder and select Refresh to see the files.
-
-![Screenshot of the Lakehouse Explorer with the qrcodes folder](assets/lakehouse-explorer-qrcodes.png)
-
-To display the cards in a tabular format, run the following code:
+First, we need to import the necessary libraries: Add the following code to your notebook in a new cell:
 
 ```python
-# Display the QA in the JSON file
 import pandas as pd
 from io import StringIO
 from IPython.display import display
 
-# Read the JSON content from the Lakehouse
+```
+- `pandas`: A powerful data manipulation library.
+- `StringIO`: Allows us to read strings as file-like objects.
+- `display`: Used to display rich content in Jupyter notebooks.
+
+**Read the JSON Content**
+
+Next, we read the JSON content containing our flashcards from the Lakehouse. This allows us to load the data into a Pandas DataFrame for easy manipulation and display.
+    
+```python
+   # Read the JSON content from the Lakehouse
 qas_content = mssparkutils.fs.head(GENERATED_QAS_PATH)
 df = pd.read_json(StringIO(qas_content))
+```
 
+- `mssparkutils.fs.head(GENERATED_QAS_PATH)`: Reads the content of the JSON file from the specified path.
+- `pd.read_json()`: Converts the JSON content into a Pandas DataFrame.
+
+**Make URLs Clickable**
+
+To enhance the usability of our table, we'll make the URLs in the `source_url` and `qr_url` columns clickable.
+
+First, define a function that converts a URL string into an HTML anchor tag:
+
+```python
 # Function to make URLs clickable
 def make_clickable(val):
     return f'<a href="{val}" target="_blank">{val}</a>'
+```
 
-# Apply the function to the 'source_url' and 'qr_url' columns
-# Optionally, hide the index or set 'id' as index
-# Set 'id' as index to avoid duplicate numbering
+- `make_clickable`: Formats the URL so that it becomes a clickable link that opens in a new tab.
+
+**Apply the Function and Style the DataFrame**
+
+Now, we'll apply the make_clickable function to the relevant columns and set the 'id' column as the index to organize our data better. We'll use Pandas Styler to format the DataFrame for better readability
+
+```python
+# Set 'id' as the index to avoid duplicate numbering
 df.set_index('id', inplace=True)
 
-# Create the Pandas Styler
+# Create the Pandas Styler and format the clickable links
 styler = df.style.format({'source_url': make_clickable, 'qr_url': make_clickable})
 
-# Hide the index if desired
-# styler = styler.hide_index()
+```
 
+- `df.set_index('id', inplace=True)`: Sets the 'id' column as the index of the DataFrame.
+
+- `df.style.format():` Applies the formatting function to specified columns.
+
+**Adjust the Alignment & Display the DataFrame**
+
+To improve the visual layout, we'll left-align all the text in the DataFrame. Finally, we display the styled DataFrame using the display function.
+
+```python
 # Left-align all columns
 styler = styler.set_properties(**{'text-align': 'left'})
-
-# Alternatively, you can specify alignment for specific columns
-# styler = styler.set_properties(subset=['question', 'answer', 'source_url', 'qr_url'], **{'text-align': 'left'})
 
 # Adjust the header alignment
 styler = styler.set_table_styles([{
@@ -601,7 +706,10 @@ styler = styler.set_table_styles([{
 # Display the DataFrame with clickable links and left-aligned text
 display(styler)
 ```
-With the above code, you should see the flashcards in a tabular format. The `source_url` and `qr_url` columns are clickable links that will open in a new tab.
+
+- ` set_properties()`: Sets CSS properties for the DataFrame cells.
+- `set_table_styles()`: Applies CSS styles to the table elements.
+
 
 ![Screenshot of the Flashcards in a tabular format](assets/flashcards-table.png)
 
@@ -667,7 +775,17 @@ Let's shift to Azure and create a storage account to store the QR codes.
 
 Destination : this is where we will copy the data to.
 
-- On azure create a storage account, name = `flashcardsstorage`, Primary service = Azure Blob Storage or Azure Data Lake Storage Gen2, perfomance = Standard, Replication = Locally-redundant storage (LRS), Access tier = Hot, Networking = Public endpoint, Encryption type = Microsoft managed key, Tags = None, Review + create, Create.
+On azure create a storage account, 
+- name = `flashcardsstorage`
+- Primary service = `Azure Blob Storage or Azure Data Lake Storage Gen2`
+- Perfomance = `Standard`
+- Replication = `Locally-redundant storage (LRS)`
+-  Access tier = `Hot`
+- Networking = `Public endpoint`
+- Encryption type = `Microsoft managed key`
+- Tags = `None` or add your preferred tags
+
+Click Review + create, and then  Create.
 
 ![Screenshot of Storage Account Provisioning on Azure Portal](assets/create-storage-account.png)
 
