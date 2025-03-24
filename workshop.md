@@ -841,29 +841,43 @@ Once the pipeline is finished, you can go to your Azure Blob Storage account and
 
 ---
 
-# Generate a PDF with the Flashcards
+# Publish the Flashcards to a Web App
 
-In your Azure Blob Storage account, go to the containers pane. You should see the `qrcodes` and `json` folders with the QR codes and the JSON file. Now we are going to generate a PDF with the flashcards.
+In your Azure Blob Storage account, go to the containers pane and navigate to the `json` folder. Download the `generated-QAs.json` file to your local machine.
+
 
 ![Screenshot of the Azure Blob Storage account with the generated-QAs JSON file](assets/azure-blob-storage-json.png)
 
-Download the `generated-QAs.json` file to your local machine.
 
-To generate the PDF, we are going to use a [Printable Flashcards Generator](https://martafagundez.github.io/printable-flashcards-generator/). This tool allows you to generate a PDF with the flashcards by providing a JSON file with the questions and answers. **Make sure to star the repository on GitHub!**
+## Prepare Web App for deployment
 
-![Screenshot of the Printable Flashcards Generator](assets/printable-flashcards-generator.png)
+Navigate to the [Flashcards Web App repository](https://github.com/videlalvaro/fabcon-flashcards-workshop-site) and fork the repository.
 
-## Open the Printable Flashcards Generator
+![Screenshot of the Fabric Flashcards website repository](assets/.png)
 
-Go to the [Printable Flashcards Generator](https://martafagundez.github.io/printable-flashcards-generator/) and select the `Choose file` button. Browse to the `generated-QAs.json` file you just downloaded from your Azure Blob Storage account.
+In the forked repository, locate `generated-QAs.json` on your local machine, then upload it to the root of the `src` folder.
 
-In the menu on the left select "PRINT". Make sure the Layout is set to "Landscape", that paper size is "A4", and that Margins are set to "None".
+![Screenshot of the questions and answer JSON file in the root of the src folder of the Fabric Flashcards website repository](assets/.png)
 
-![Screenshot of the Printable Flashcards Generator](assets/printable-flashcards-generator-print.png)
+## Change the source of the generated QAs
 
-You can now save the PDF file to your local machine. You can print the PDF and cut the flashcards to have a physical set of flashcards to study.
+You will update the web app to use `generated-QAs.json` as the data source of the web app. 
 
-![Screenshot of the generated Flashcards PDF](assets/flashcards-pdf-preview.png)
+In `src/app/page.tsx` of the website repository update the lines of code by commenting out the existing `QAsURL` variable, then uncomment the line below it and update the [your GitHub handle] placeholder with the GitHub handle, from the account that forked the website repository. It should look like the code below.
+
+```javascript
+//const QAsURL = "https://fabconworkshopalvidela.blob.core.windows.net/$web/generated-QAs.json"
+
+const QAsURL = "https://raw.githubusercontent.com/[your GitHub handle]/fabcon-flashcards-workshop-site/refs/heads/main/src/generated-QAs.json"
+```
+
+## Enable GitHub Pages
+
+Navigate to the forked repository's settings, then navigate to **Pages** under **Code and automation**. Select GitHub Actions in the dropdown under Source. This triggers a deployment to GitHub pages. You can monitor the deplyment under **Actions**. 
+
+![Screenshot of the Pages view in the repository's settings.](assets/.png)
+
+After deployment is complete you may navigate to the site, which can also be found in the **Pages** repository settings view.
 
 ---
 
@@ -871,7 +885,7 @@ You can now save the PDF file to your local machine. You can print the PDF and c
 
 This concludes this workshop, we hope you enjoyed it and learned something new.
 
-In this workshop, you learned how to use Microsoft Fabric and Azure OpenAI to generate a set of study flashcards. You connected Fabric to Azure Blob Storage to store the flashcards and QR codes. You generated a PDF with the flashcards.
+In this workshop, you learned how to use Microsoft Fabric and Azure OpenAI to generate a set of study flashcards. You connected Fabric to Azure Blob Storage to store the flashcards.
 
 ## Clean up resources
 
