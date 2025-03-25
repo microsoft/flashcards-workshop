@@ -770,7 +770,7 @@ If you see these file contents in the output of the DataFrame but do not see a f
 
 # Create a Fabric Data Pipeline
 
-Now that we have the flashcards and the QR codes, we can run a [data pipeline](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/training/modules/explore-azure-blob-storage/)) for public consumption.
+Now that we have the flashcards, we can run a [data pipeline](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/training/modules/explore-azure-blob-storage/)) for public consumption.
 
 Select the `Home` button to go back to the Data Engineering experience. Select `Data pipeline` to create a new data pipeline. Give it the name `flashcards_pipeline`, and then select `Create`.
 
@@ -861,7 +861,7 @@ const QAsURL = "https://raw.githubusercontent.com/[your GitHub handle]/fabcon-fl
 
 ## Enable GitHub Pages
 
-Navigate to the forked repository's settings, then navigate to **Pages** under **Code and automation**. Select GitHub Actions in the dropdown under Source. This triggers a deployment to GitHub pages. You can monitor the deplyment under **Actions**. 
+Navigate to the forked repository's settings, then navigate to **Pages** under **Code and automation**. Select GitHub Actions in the dropdown under Source. This triggers a deployment to GitHub pages. You can monitor the deployment under **Actions**. 
 
 ![Screenshot of the Pages view in the repository's settings.](assets/github-actions-config.png)
 
