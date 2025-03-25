@@ -79,16 +79,16 @@ You'll learn how to:
 **GitHub Account** - If you do not have an active GitHub account, proceed with steps to create a GitHub account at https://github.com/signup.  This process should only take a few minutes to complete.  
 
 
-**Access to Microsoft Fabric** - For those joining an in-person delivery of this workshop at FabCon, we will provide access to a Fabric tenant that will allow you access to an account that will have all of the necessary provisioning in place to complete the workshop steps.  Proctors will provide you with details on how to access your account credentials.  If you require access to a Fabric Free Trial Capacity, you can follow the steps at https://blog.fabric.microsoft.com/blog/accessing-microsoft-fabric-for-developers-startups-and-enterprises to satisfy this requirement. 
+**Access to Microsoft Fabric** - For those joining an in-person delivery of this workshop at FabCon, we will provide access to a Fabric tenant that will allow you access to an account that will have all of the necessary provisioning in place to complete the workshop steps.  Proctors will provide you with details on how to access your account credentials.  If you require access to a Fabric Free Trial Capacity, you can follow these [instructions](https://blog.fabric.microsoft.com/blog/accessing-microsoft-fabric-for-developers-startups-and-enterprises ) to satisfy this requirement. 
 
-**Azure Account** - If you do not have an active Azure account setup, you should proceed to create an Azure free trial account. You can get started by following the steps at https://azure.microsoft.com/free.  Azure Free trial accounts do not support deployment of Azure Open AI Service on AI Foundry, we will provide pre-generated inference results to accomodate situations for those who may be unable to access this service.  Additionally, if for any reason, you are unable to create an Azure Account, you will still be able to complete a majority of the workshop content.  For those who do not have access to an Azure account, you will follow different steps to reach the end goal, this will include skipping the deployment of the Azure Open AI Service in Azure AI Foundry and skipping the deployment of the Azure Storage Account.
+**Azure Account** - If you do not have an active Azure account setup, you should proceed to create an Azure free trial account. You can get started by visiting this [link](https://azure.microsoft.com/free).  Azure Free trial accounts do not support deployment of Azure Open AI Service on AI Foundry, we will provide pre-generated inference results to accomodate situations for those who may be unable to access this service.  Additionally, if for any reason, you are unable to create an Azure Account, you will still be able to complete a majority of the workshop content.  For those who do not have access to an Azure account, you will follow different steps to reach the end goal, this will include skipping the deployment of the Azure Open AI Service in Azure AI Foundry and skipping the deployment of the Azure Storage Account.
 
-## Deployment of Azure Services
+## Deploy Azure Open AI Service in Azure AI Foundry
 
 **Azure Open AI Service in Azure AI Foundry** - You will use this service to generate the flashcards questions and answers.
 > If you are using an Azure account that does not have access to Azure Open AI Service in Azure Foundry (Azure Free Trial accounts are not supported!), it is suggested to read the instructions that follow for completeness, then skip to the next step which covers deployment of Azure Blob Storage.
 
-> The following steps are described in additional detail at: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal
+> The steps to deploy an Azure Open AI Service are described in additional detail in the [online documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal)
 
 1. Navigate to the [Azure Portal](https://portal.azure.com) and sign-in with your account.  Select the `Create a resource` option as shown:
 
@@ -124,16 +124,18 @@ When you are ready, select `Next` to proceed.  On the resulting Network details 
 
 ![Screenshot showing steps to deploy gpt4o model from the Azure AI Foundry Portal](assets/azure-ai-foundry-deploy-gpt4o.png)
 
-7. On the resulting screen, leave options as they are with Deploy type set to `Global Standard` then select `Deploy` to begin the deployment.
+7. On the resulting screen, leave options as they are with `Deployment type` set to `Global Standard` then select `Deploy` to begin the deployment.
 
 ![Screenshot showing steps to confirm and deploy a gpt4o model from the Azure AI Foundry Portal](assets/azure-ai-foundry-deploy-gpt4o-confirm.png)
 
-8. You will now be navigated to your deployed instance of gpt-4o. In this screen you can find samples demonstrating how to call your Azure Open AI Service using various SDK.  In addition, you can find your `Target URI` and `Key` that can be used to make web requests that call your AI model service from client code. 
+8. You will now be navigated to your deployed instance of gpt-4o. In this screen you can find samples demonstrating how to call your Azure Open AI Service using various SDK.  In addition, you can find your `Target URI` and `Key` that can be used to make web requests that call your AI model service from client code. These will be used in later instructions to call your deployed service from a Notebook in Microsoft Fabric.
 
 ![Screenshot showing your deployed gpt4o model in  the Azure AI Foundry Portal](assets/azure-ai-foundry-deployed-gpt4o.png)
 
 
-**Azure Blob Storage** - You will use this service to store the generated flashcard content, which will be used to render flashcard content in the accompanying static web app. 
+## Deploy Azure Storage Account
+
+**Azure Storage Account** - You will use this service to store the generated flashcard content, which will be used to render flashcard content in the accompanying static web app. 
 > If you do not have access to an Azure account, it is still suggested to read the instructions that follow for completeness, and then skip to the next section.  You will still be able to deploy a functional static web app, as this only requires an active GitHub account, but you will not be able to serve data to your static web app from Azure.
 
 1.  Navigate to the [Azure Portal](https://portal.azure.com) and sign-in with your account.  Select the `Create a resource` option as shown:
@@ -175,7 +177,7 @@ It is suggested to leave all other options as they are set by default. You are n
 
 ![Screenshot showing steps to enable Static website for a storage account from Microsoft Azure Portal](assets/azure-enable-static-website.png)
 
-6. Now, on the left-hand side, expand `Settings` and select `Resource sharing (CORS)`, ensure that "Blob service is highlighted then provide the following details to to configure your web application and click `Save` as shown:
+6. Now, on the left-hand side, expand `Settings` and select `Resource sharing (CORS)`, ensure that `Blob service` is highlighted then provide the following details to to configure your web application and click `Save` as shown:
 
 **Allowed origins** - set this value to `*`
 
@@ -194,13 +196,13 @@ It is suggested to leave all other options as they are set by default. You are n
 
 ## Create a Microsoft Fabric Workspace
 
-**Microsoft Fabric** -  You will use Microsoft Fabric to create a Lakehouse, run the notebooks, and create the Data pipeline that will copy your flashcard content to your Azure Storage account.  
+**Microsoft Fabric Workspace** -  You will use Microsoft Fabric to create a Lakehouse, run the provided notebook code, and create the Data pipeline that will copy your flashcard content to your Azure Storage account.  The workspace provides a collaborative environment within the Microsoft Fabric platform where you can organize, manage, and share data-related assets.
 
-1. Access your Fabric instance by visiting https://app.fabric.microsoft.com, login with your credentials, and create a new Fabric-enabled workspace for this workshop. To accomplish this, on the home screen, select `New Workspace`, provide a value for `Name`, and ensure after expanding the `Advanced` section that you have selected a License mode that support creation of Fabric items as shown, then select `Apply`. 
+1. Access your Fabric instance by visiting [Microsoft Fabric online](https://app.fabric.microsoft.com), login with your credentials, and create a new Fabric-enabled workspace for this workshop. To accomplish this, on the home screen, select `New Workspace`, provide a value for `Name`, and ensure after expanding the `Advanced` section that you have selected a License mode that support creation of Fabric items as shown, then select `Apply`. 
 
 ![Screenshot showing steps to create a workspace in Microsoft Fabric](assets/fabric-create-workspace.png)
 
-## Create a Lakehouse 
+## Create a Lakehouse in Microsoft Fabric
 
 **Lakehouse in Microsoft Fabric** - A lakehouse in Microsoft Fabric is a data architecture platform designed to store, manage, and analyze both structured and unstructured data in a single location.
 
@@ -214,17 +216,21 @@ To learn more about Lakehouses in Microsoft Fabric, refer to [this Lakehouse tut
 
 ![Screenshot showing steps to name a new Lakehouse in Microsoft Fabric](assets/fabric-name-lakehouse.png)
 
-## Create a new notebook
+## Create a Notebook in Microsoft Fabric
 
-You should now be in the user interface of the Lakehouse.  If you have lost your way, you can always find your Lakehouse by navigating to the Workspace that was creaeted in the previous steps. Create a new notebook by selecting `Open Notebook` and then `new notebook` from the drop down menu. 
+**Notebook in Microsoft Fabric** - The Notebook is a primary code item for developing Apache Spark jobs and machine learning experiments.  It is a web-based interactive service in Microsoft Fabric typically used by data scientists and data engineers.
+
+To learn more about Lakehouses in Microsoft Fabric, refer to [the online documentation](https://learn.microsoft.com/fabric/data-engineering/how-to-use-notebook).
+
+1. You should now be in the user interface of the Lakehouse.  If you have lost your way, you can always find your Lakehouse by navigating to the Workspace that was creaeted in the previous steps. Create a new notebook by selecting `Open Notebook` and then `new notebook` from the drop down menu. 
 
 ![Screenshot of the New Notebook in the Lakehouse](assets/fabric-new-notebook.png)
 
-Once the notebook is created, select the `Save as` icon in the upper left toolbar underneath `Home`, and save the notebook as `flashcards_workshop` as shown:
+3. Once the notebook is created, select the `Save as` icon in the upper left toolbar underneath `Home`, and save the notebook as `flashcards_workshop` as shown:
 
 ![Screenshot of the "Save As" Notebook dialog in the Lakehouse](assets/fabric-saveas-notebook.png)
 
-## Install required libraries
+## Install required Notebook libraries
 
 1. Resume working in your recently created / saved Notebook and add the following code to the first cell to install the required Python Packages. 
 
