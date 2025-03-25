@@ -1,16 +1,18 @@
 ---
 published: true
 type: workshop
-title: Create self-study Flashcards using RAG (Retrieval Augmented Generation) with Microsoft Fabric and Azure OpenAI
+title: Create self-study Flashcards using RAG (Retrieval Augmented Generation) with Microsoft Fabric and Azure AI Foundry
 short_title: Fabric Flashcards Workshop
-description: Learn how to use Microsoft Fabric and Azure OpenAI to generate a set of study flashcards. Connect Fabric to Azure Blob Storage to store the flashcards and QR codes. Generate a PDF with the flashcards.
+description: Learn how to use Microsoft Fabric and Azure AI Foundry to generate a set of study flashcards. Connect Fabric to Azure Blob Storage to store created flashcards and present in a static website hosted on GitHub Pages.
 level: beginner
 authors:
   - Alvaro Videla
+  - Paul DeCarlo
+  - Jasmine Greenaway
 contacts:
   - '@old_sound'
-duration_minutes: 30
-tags: openai, fabric, python, flashcards, Microsoft Fabric, Azure OpenAI, notebooks, data engineering, data pipelines
+duration_minutes: 60
+tags: openai, fabric, python, flashcards, Microsoft Fabric, Azure AI Foundry, Azure OpenAI, notebooks, data engineering, data pipelines
 banner_url: assets/banner.png           # Optional. Should be a 1280x640px image
 #video_url: https://youtube.com/link     # Optional. Link to a video of the workshop
 #audience: students                      # Optional. Audience of the workshop (students, pro devs, etc.)
@@ -24,19 +26,19 @@ banner_url: assets/banner.png           # Optional. Should be a 1280x640px image
 
 # Create Flashcards with Microsoft Fabric and Azure OpenAI
 
-In this workshop, you will learn how to use [Microsoft Fabric](https://www.microsoft.com/microsoft-fabric) with [Azure OpenAI](https://azure.microsoft.com/products/ai-services/openai-service) to generate a set of study flashcards, so you can learn new concepts in a fun and playful way. 
+In this workshop, you will learn how to use [Microsoft Fabric](https://www.microsoft.com/microsoft-fabric) with the [Azure OpenAI Service](https://azure.microsoft.com/products/ai-services/openai-service) in [Azure AI Foundry](https://learn.microsoft.com/azure/ai-foundry/azure-openai-in-ai-foundry) to generate a set of study flashcards.  Learn how to use Microsoft Fabric with modern Retrieval-Augmented Generations (RAG) techniques and the latest foundation models in Azure AI Foundry, to develop materials to assist in your understanding of the overall Microsoft Fabric platform. 
 
 In this example we will use [Microsoft Learn](https://learn.microsoft.com/training/) as the source material for the flashcards. 
 
 We will fetch the Markdown files from the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/) and import them into a Microsoft Fabric [Lakehouse](https://learn.microsoft.com/fabric/data-engineering/lakehouse-overview). 
 
-Then we will use Azure OpenAI to generate a set of study flashcards. We will generate QR codes for each flashcard pointing to the source material. 
+Then we will use Azure OpenAI Service in Azure AI Foundry to generate the data that will be used as the basis for our set of study flashcards. 
 
-Finally, we will run [data pipelines](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/azure/storage/blobs/)) for public consumption. 
+Next, we will use [data pipelines](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) in Microsoft Fabric to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/azure/storage/blobs/)) for public consumption. 
 
-We will generate a ready to print PDF with your flashcards using the [Printable Flashcards Generator](https://martafagundez.github.io/printable-flashcards-generator/).
+We will generate a static website to present your flashcards using the [GitHub Pages](https://docs.github.com/pages).
 
-![Screenshot of the Flashcards PDF](assets/flashcards-pdf.png)
+![Screenshot of static website hosted on GitHub Pages, displaying the contents of the Flashcards](assets/flashcards-site.png)
 
 ## Goals
 
@@ -44,62 +46,219 @@ You'll learn how to:
 
 - Use Microsoft Fabric notebooks.
 - Load data from an external data source into a Microsoft Fabric Lakehouse.
-- Use Azure OpenAI to generate a set of study flashcards.
-- Generate QR codes for each flashcard pointing to the source material.
+- Use Azure OpenAI Service in Azure AI Foundry to generate a set of study flashcards.
 - Run data pipelines to copy the data to an external data store (Azure Blob Storage) for public consumption.
-- Generate a ready to print PDF with your flashcards.
+- Generate a static website using GitHub Pages to present and interact with your flashcards.
 
-## Pre-requisites
+## Required Pre-requisites
 
 | | |
 |----------------------|------------------------------------------------------|
-| Azure account        | [Get a free Azure account](https://azure.microsoft.com/free) |
-| Microsoft Fabric License | [Microsoft Fabric Licenses](https://learn.microsoft.com/fabric/enterprise/licenses) |
+| GitHub Account | [Create your free account on GitHub](https://github.com/signup) |
+| Access to Microsoft Fabric | [Accessing Microsoft Fabric for developers, startups and enterprises!](https://blog.fabric.microsoft.com/blog/accessing-microsoft-fabric-for-developers-startups-and-enterprises/) |
 | A workspace in Microsoft Fabric | [Create a Microsoft Fabric workspace](https://learn.microsoft.com/fabric/data-warehouse/tutorial-create-workspace) |
-| Access to Azure OpenAI API | [Request access to Azure OpenAI](https://aka.ms/oaiapply) |
 | A Web browser        | [Get Microsoft Edge](https://www.microsoft.com/edge) |
+
+
+## Optional Pre-requisites 
+
+>(Note: While it is possible to complete the workshop without access to these services, it is highly recommended use them in order to experience the full functionality of this content!)
+
+| | |
+|----------------------|------------------------------------------------------|
+| Azure account        | [Get a free trial Azure account](https://azure.microsoft.com/free) |
+| Access to Azure OpenAI Service in Azure AI Foundry| [Azure Open AI in Azure AI Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/azure-openai-in-ai-foundry) |
 | Python knowledge | [Python for beginners](https://learn.microsoft.com/training/paths/beginner-python/) |
 
 ---
 
 # Environment Setup
 
-In Azure Portal, you need to provision the following services:
+## Account Provisioning
 
-**Azure OpenAI**. You will use it to generate the flashcards questions and answers.
+**GitHub Account** - If you do not have an active GitHub account, proceed with steps to create a GitHub account at https://github.com/signup.  This process should only take a few minutes to complete.  
 
-**Azure Blob Storage**. You will use it to store the generated flashcards and QR codes. Once you have your Storage Account provisioned, make sure you enable `Allow Blob anonymous access` in the `Configuration` tab under `Settings`. The QR codes will be publicly accessible by the PDF generator app.
 
-**Azure Key Vault (Recommended)**. You will use it to store your Azure OpenAI API key.
+**Access to Microsoft Fabric** - For those joining an in-person delivery of this workshop at FabCon, we will provide access to a Fabric tenant that will allow you access to an account that will have all of the necessary provisioning in place to complete the workshop steps.  Proctors will provide you with details on how to access your account credentials.  If you require access to a Fabric Free Trial Capacity, you can follow the steps at https://blog.fabric.microsoft.com/blog/accessing-microsoft-fabric-for-developers-startups-and-enterprises to satisfy this requirement. 
 
-**Microsoft Fabric**. Create a new workspace for this workshop. You will use it to create a Lakehouse, run the notebooks, and the Data pipeline.
+**Azure Account** - If you do not have an active Azure account setup, you should proceed to create an Azure free trial account. You can get started by following the steps at https://azure.microsoft.com/free.  Azure Free trial accounts do not support deployment of Azure Open AI Service on AI Foundry, we will provide pre-generated inference results to accomodate situations for those who may be unable to access this service.  Additionally, if for any reason, you are unable to create an Azure Account, you will still be able to complete a majority of the workshop content.  For those who do not have access to an Azure account, you will follow different steps to reach the end goal, this will include skipping the deployment of the Azure Open AI Service in Azure AI Foundry and skipping the deployment of the Azure Storage Account.
 
-## Create a Lakehouse
+## Deployment of Azure Services
 
-To create a new Lakehouse in your Microsoft Fabric workspace, open the Synapse Data Engineering experience and select the `Lakehouse` button. Provide a name of `flashcards_workshop` and select `Create`.
+**Azure Open AI Service in Azure AI Foundry** - You will use this service to generate the flashcards questions and answers.
+> If you are using an Azure account that does not have access to Azure Open AI Service in Azure Foundry (Azure Free Trial accounts are not supported!), it is suggested to read the instructions that follow for completeness, then skip to the next step which covers deployment of Azure Blob Storage.
 
-![Screenshot of New Lakehouse dialog in Synapse Data Engineering tab](assets/new-lakehouse.png)
+> The following steps are described in additional detail at: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal
+
+1. Navigate to the [Azure Portal](https://portal.azure.com) and sign-in with your account.  Select the `Create a resource` option as shown:
+
+![Screenshot showing steps to create a resource in Microsoft Azure Portal](assets/azure-create-a-resource.png)
+
+2. On the resulting page, search for and click the `Create` button for the `Azure Open AI` service that is shown highlighted below:
+
+![Screenshot showing steps to create Azure Open AI resource in Microsoft Azure Portal](assets/azure-create-azure-openai.png)
+
+3. Provide the following details to prepare your service for deployment:
+
+**Subscription** - This should auto-populate based on your account settings
+
+**Resource group** - Select `Create new` and provide a name
+
+**Region** - Select an option from the drop-down, it is recommended to choose one in same geography as your Fabric tenant if possible
+
+**Pricing tier** - Standard S0 is recommended
+
+![Screenshot showing steps to provide Azure details to prepare deployment of Open AI resource in Microsoft Azure Portal](assets/azure-create-azure-openai-details.png)
+
+When you are ready, select `Next` to proceed.  On the resulting Network details page, ensure that you have selected option that states `All networks, including the internet, can access this resource`.  You are now able to proceed to the `Review + submit` step to finalize deployment.  When you are ready, select `Create` to begin the deployment.
+
+4. You will now need to wait for your deployment to complete, once this has finished, navigate to your newly deployed resource by selecting `Go to resource` on the resulting page.  If you have lost your way, you can always find your deployed service by navigating to the Resource Group that was selected for deployment in the previous step.  Once successfully navigated, click the `Explore Azure AI Foundry portal` link on the overview page as shown:
+
+![Screenshot showing steps to navigate to Azure AI Foundry Portal from Microsoft Azure Portal](assets/azure-explore-ai-foundry.png)
+
+5. Once you have completed navigation to [Azure AI Foundry](https://ai.azure.com/), select `Shared resources => Deployments`, the select `Deploy model` and select the `Deploy base model` option as shown:
+
+![Screenshot showing steps to deploy base model from the Azure AI Foundry Portal](assets/azure-ai-foundry-deploy.png)
+
+6. You will now be provided a number of options, we are specifically interested in deploying a model that supports the `Chat completion` task.  At time of writing, `gpt-4o` is considered a good option.  Select this model and select `Confirm` to proceed.
+
+![Screenshot showing steps to deploy gpt4o model from the Azure AI Foundry Portal](assets/azure-ai-foundry-deploy-gpt4o.png)
+
+7. On the resulting screen, leave options as they are with Deploy type set to `Global Standard` then select `Deploy` to begin the deployment.
+
+![Screenshot showing steps to confirm and deploy a gpt4o model from the Azure AI Foundry Portal](assets/azure-ai-foundry-deploy-gpt4o-confirm.png)
+
+8. You will now be navigated to your deployed instance of gpt-4o. In this screen you can find samples demonstrating how to call your Azure Open AI Service using various SDK.  In addition, you can find your `Target URI` and `Key` that can be used to make web requests that call your AI model service from client code. 
+
+![Screenshot showing your deployed gpt4o model in  the Azure AI Foundry Portal](assets/azure-ai-foundry-deployed-gpt4o.png)
+
+
+**Azure Blob Storage** - You will use this service to store the generated flashcard content, which will be used to render flashcard content in the accompanying static web app. 
+> If you do not have access to an Azure account, it is still suggested to read the instructions that follow for completeness, and then skip to the next section.  You will still be able to deploy a functional static web app, as this only requires an active GitHub account, but you will not be able to serve data to your static web app from Azure.
+
+1.  Navigate to the [Azure Portal](https://portal.azure.com) and sign-in with your account.  Select the `Create a resource` option as shown:
+
+![Screenshot showing steps to create a resource in Microsoft Azure Portal](assets/azure-create-a-resource.png)
+
+
+2. On the resulting page, search for and click the `Create` button for the `Storage account` service that is shown highlighted below:
+
+![Screenshot showing steps to create Storage Account resource in Microsoft Azure Portal](assets/azure-create-storage-account.png)
+
+3. Provide the following details to prepare your service for deployment:
+
+**Subscription** - This should auto-populate based on your account settings
+
+**Resource group** - Select `Create new` and provide a name or select and existing Resource group
+
+**Storage account name** - The name must be unique across all existing storage account names in Azure. It must be 3 to 24 characters long, and can contain only lowercase letters and numbers.
+
+**Region** - Select an option from the drop-down, it is recommended to choose one in same geography as your Fabric tenant if possible
+
+**Primary service** - Select `Azure Blob Storage or Azure Data Lake Storage Gen 2`
+
+**Performance** - Select `Standard`
+
+**Redundancy** - Select `Geo-redundant storage (GRS)`
+
+![Screenshot showing steps to provide Azure details to prepare deployment of an Azure Storage Account resource in the  Microsoft Azure Portal](assets/azure-create-storage-account-details.png)
+
+It is suggested to leave all other options as they are set by default. You are now able to proceed to the `Review + submit` step to finalize deployment.  When you are ready, select `Create` to begin the deployment.
+
+4. You will now need to wait for your deployment to complete, once this has finished, navigate to your newly deployed resource by selecting `Go to resource` on the resulting page.  If you have lost your way, you can always find your deployed service by navigating to the Resource Group that was selected for deployment in the previous step.  
+
+5. Once you have successfully navigated to your storage account, on the left-hand side, expand `Settings` and select `Configuration`, then select `Enabled` under the option to `Allow Blob anonymous access` then select `Save` as shown:
+
+![Screenshot showing steps to enable anonymous access for a storage account from Microsoft Azure Portal](assets/azure-enable-anonymous-access.png)
+
+5. Now, on the left-hand side, expand `Data management` and select `Static website`, then select `Enabled`, then select `Save` as shown:
+
+![Screenshot showing steps to enable Static website for a storage account from Microsoft Azure Portal](assets/azure-enable-static-website.png)
+
+6. Now, on the left-hand side, expand `Settings` and select `Resource sharing (CORS)`, ensure that "Blob service is highlighted then provide the following details to to configure your web application and click `Save` as shown:
+
+**Allowed origins** - set this value to `*`
+
+**Allowed methods** - Select `Get` from the drop-down menu
+
+**Allowed headers** - set this value to `*`
+
+**Exposed headers** - set this value to `*`
+
+**Max age** - set this value to `1800`
+
+
+![Screenshot showing steps to enable Resource sharing (CORS) for a storage account from Microsoft Azure Portal](assets/azure-enable-resource-sharing.png)
+
+7. We are now done with the configuration of this service.  We will return to this resource in future steps when creating the Fabric Data Pipeline.
+
+## Create a Microsoft Fabric Workspace
+
+**Microsoft Fabric** -  You will use Microsoft Fabric to create a Lakehouse, run the notebooks, and create the Data pipeline that will copy your flashcard content to your Azure Storage account.  
+
+1. Access your Fabric instance by visiting https://app.fabric.microsoft.com, login with your credentials, and create a new Fabric-enabled workspace for this workshop. To accomplish this, on the home screen, select `New Workspace`, provide a value for `Name`, and ensure after expanding the `Advanced` section that you have selected a License mode that support creation of Fabric items as shown, then select `Apply`. 
+
+![Screenshot showing steps to create a workspace in Microsoft Fabric](assets/fabric-create-workspace.png)
+
+## Create a Lakehouse 
+
+**Lakehouse in Microsoft Fabric** - A lakehouse in Microsoft Fabric is a data architecture platform designed to store, manage, and analyze both structured and unstructured data in a single location.
 
 To learn more about Lakehouses in Microsoft Fabric, refer to [this Lakehouse tutorial](https://learn.microsoft.com/fabric/data-engineering/tutorial-build-lakehouse#create-a-lakehouse).
 
+1. Create a new Lakehouse in your Microsoft Fabric workspace. To accomplish this, select `+ New item`, search for "Lakehouse" in the pane that opens, and select the `Lakehouse` item":
+
+![Screenshot showing steps to create a new Lakehouse in Microsoft Fabric](assets/fabric-create-lakehouse.png)
+
+2. Provide a name for your Lakehouse and select "Create" as shown:
+
+![Screenshot showing steps to name a new Lakehouse in Microsoft Fabric](assets/fabric-name-lakehouse.png)
 
 ## Create a new notebook
 
-Once you are in the new Lakehouse, create a new notebook by selecting `Open Notebook` and then `new notebook` from the drop down menu. 
+You should now be in the user interface of the Lakehouse.  If you have lost your way, you can always find your Lakehouse by navigating to the Workspace that was creaeted in the previous steps. Create a new notebook by selecting `Open Notebook` and then `new notebook` from the drop down menu. 
 
-![Screenshot of the New Notebook dialog in the Lakehouse](assets/new-notebook.png)
+![Screenshot of the New Notebook in the Lakehouse](assets/fabric-new-notebook.png)
 
-Once the notebook is created, select the `Save as` icon and save the notebook as `flashcards_workshop`. 
+Once the notebook is created, select the `Save as` icon in the upper left toolbar underneath `Home`, and save the notebook as `flashcards_workshop` as shown:
+
+![Screenshot of the "Save As" Notebook dialog in the Lakehouse](assets/fabric-saveas-notebook.png)
 
 ## Install required libraries
 
-Once the notebook is saved, add the following code to the first cell to install the required libraries:
+1. Resume working in your recently created / saved Notebook and add the following code to the first cell to install the required Python Packages. 
 
 ```bash
-%pip install qrcode
+#Install required Python Packages
+
+%pip install beautifulsoup4 #Python library for parsing data out of HTML and XML files
+%pip install azure-ai-inference #Azure AI Inference client library for Python
 ```
 
-We are going to use the `qrcode` library to generate the QR codes for the flashcards. We do this as a first step, because once the library is installed, the notebook will automatically restart the kernel to make the library available for the rest of the code.
+ Run the cell by selecting the "Play" icon to the left of the cell.
+
+>Note: When a notebook session is first created, non-standard libraries will not be available unless they have been installed into the session.  If you receive errors in subsequent cells mentioning these libraries as missing, you likely need to re-run this cell as this usually indicates that your session was closed (relinquishing your installed libraries).
+
+![Screenshot of the successful pip installation inside a Microsoft Fabric notebook](assets/fabric-notebook-pip-install.png)
+
+2. Hover your mouse below the Log output to reveal the `+ Code` button, this will add an additional code cell.  Add the following code to this cell to import the packages that will be used in later cells for fetching Markdown files and processing JSON / CSV formats.  
+
+```bash
+#Package imports for fetching Markdown files and processing JSON / CSV formats
+
+import re
+import requests
+import os
+import json
+import csv
+```
+
+Run the cell by selecting the "Play" icon to the left of the cell.
+
+>Note: When a notebook session is first created, package imports will not be available unless they have been imported into the session.  If you receive errors in subsequent cells mentioning missing imports, you likely need  re-run this cell as this usually indicates that your session was closed (relinquishing your imported packages).
+
+![Screenshot of the successful Python imports inside a Microsoft Fabric notebook](assets/fabric-notebook-imports.png)
+
 
 ---
 
