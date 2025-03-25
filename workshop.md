@@ -776,11 +776,11 @@ Select the `Home` button to go back to the Data Engineering experience. Select `
 
 ![Screenshot of the New Data Pipeline dialog in the Synapse Data Engineering tab](assets/new-data-pipeline.png)
 
-## Copy the QR Codes to Azure Blob Storage
+## Copy the JSON Data to Azure Blob Storage
 
-In the pipeline, select "Add pipeline activity" to start building the pipeline with a blank canvas. In the contextual menu, select "Copy data" to add a new activity.
+In the pipeline, select "Add pipeline activity" to start building the pipeline with a blank canvas. In the contextual menu, select `Copy data` to add a new activity.
 
-Name the activity `Copy QR Codes to Azure Blob Storage`. 
+Name the activity `Copy JSON file to Azure Blob Storage`. Setup the source dataset like in the previous activity, but this time select the `generated-QAs.json` file.
 
 In the source dataset, select the following options:
 
@@ -789,7 +789,7 @@ In the source dataset, select the following options:
 - Lakehouse: `flashcards_workshop`
 - Root folder: `Files`
 
-Then select browse and select the `qrcodes` folder. The browser should show the QR codes in the `qrcodes`. Select "OK".
+Then select browse and select the `json` folder. Select "OK".
 
 ![Screenshot of browsing for the QR code folder in the pipeline](assets/data-pipeline-source-qrcodes.png)
 
@@ -815,19 +815,7 @@ Connection credentials:
 
 Select `Create` to create the connection. You can select the `Test connection` button to verify the connection.
 
-In File path, select `browse`, and then select the folder where you want to copy the QR codes. For example, you can create a new folder called `qrcodes` in your Azure Blob Storage account and then browse to that as you configure the destination.
-
-![Screenshot of the New Connection dialog in the pipeline](assets/data-pipeline-destination-qrcodes.png)
-
-Back in the pipeline editor, select the Save button to save the pipeline activity.
-
-## Copy the JSON Data to Azure Blob Storage
-
-Now you are going to create a new activity to copy the JSON data to Azure Blob Storage. In the activity you just create select the `Add activity` arrow button and then select `Copy data`.
-
-Name the activity `Copy JSON file to Azure Blob Storage`. Setup the source dataset like in the previous activity, but this time select the `generated-QAs.json` file.
-
-In the destination, select the same Azure Blob Storage account you created before, and then select the folder where you want to copy the JSON file, fir example, a folder called `json`. Save the pipeline.
+In File path, select `browse`, and then select the folder where you want to copy the QR codes. For example, you can create a new folder called `json` in your Azure Blob Storage account and then browse to that as you configure the destination. Save the pipeline.
 
 ## Run the pipeline
 
@@ -837,7 +825,7 @@ Select the `Run` button to run the pipeline. You can monitor the progress of the
 
 Once the pipeline is finished, you can go to your Azure Blob Storage account and see the files copied there.
 
-![Screenshot of the Azure Blob Storage account with the qrcodes and json folders](assets/azure-blob-storage.png)
+![Screenshot of the Azure Blob Storage account with the json folders](assets/azure-blob-storage.png)
 
 ---
 
@@ -853,7 +841,7 @@ In your Azure Blob Storage account, go to the containers pane and navigate to th
 
 Navigate to the [Flashcards Web App repository](https://github.com/videlalvaro/fabcon-flashcards-workshop-site) and fork the repository.
 
-![Screenshot of the Fabric Flashcards website repository](assets/.png)
+![Screenshot of the Fabric Flashcards website repository](assets/workshop-website-repo.png)
 
 In the forked repository, locate `generated-QAs.json` on your local machine, then upload it to the root of the `src` folder.
 
@@ -875,7 +863,7 @@ const QAsURL = "https://raw.githubusercontent.com/[your GitHub handle]/fabcon-fl
 
 Navigate to the forked repository's settings, then navigate to **Pages** under **Code and automation**. Select GitHub Actions in the dropdown under Source. This triggers a deployment to GitHub pages. You can monitor the deplyment under **Actions**. 
 
-![Screenshot of the Pages view in the repository's settings.](assets/.png)
+![Screenshot of the Pages view in the repository's settings.](assets/github-actions-config.png)
 
 After deployment is complete you may navigate to the site, which can also be found in the **Pages** repository settings view.
 
