@@ -772,69 +772,55 @@ If you see these file contents in the output of the DataFrame but do not see a f
 
 Now that we have the flashcards, we can run a [data pipeline](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/training/modules/explore-azure-blob-storage/)) for public consumption.
 
-Select the `Home` button to go back to the Data Engineering experience. Select `Data pipeline` to create a new data pipeline. Give it the name `flashcards_pipeline`, and then select `Create`.
+Select the `Workspace` button, and select your existing workspace. In the workspace view, select `+ New item`, then find `Data pipeline` to create a new data pipeline. Name it `flashcards_pipeline`, and then select `Create`.
 
 ![Screenshot of the New Data Pipeline dialog in the Synapse Data Engineering tab](assets/new-data-pipeline.png)
 
 ## Copy the JSON Data to Azure Blob Storage
 
-In the pipeline, select "Add pipeline activity" to start building the pipeline with a blank canvas. In the contextual menu, select `Copy data` to add a new activity.
+In the pipeline, select "Copy data assistant" to start building the pipeline with a with a `Copy data` activity. In the next view you will configure the Copy data activity.
 
-Name the activity `Copy JSON file to Azure Blob Storage`. Setup the source dataset like in the previous activity, but this time select the `generated-QAs.json` file.
+In the `Choose a data source` view, select the Lakehouse you previously created.
+In the `Connect to data source` view, select `Files` as the root folder, then in the directory open the `final_data` folder and select `generated-QAs.json` and select **Next**. 
 
-In the source dataset, select the following options:
-
-- Data store type: `Workspace`
-- Workspace data store type: `Lakehouse`
-- Lakehouse: `flashcards_workshop`
-- Root folder: `Files`
-
-Then select browse and select the `json` folder. Select "OK".
-
-![Screenshot of browsing for the QR code folder in the pipeline](assets/data-pipeline-source-qrcodes.png)
-
-In the destination, select `External`, and then `New`. In the new connection wizard, select `Azure Blob Storage` and then `Continue`. Fill in the required information to connect to your Azure Blob Storage account. 
 
 ![Screenshot of the New Connection dialog in the pipeline](assets/data-pipeline-connection.png)
 
-For example:
+In the `Choose data destination` view, search and select `Azure Blobs` and enter the following information about the Azure Storage account that you created in the previous step:
 
-![Screenshot of the New Connection settings](assets/data-pipeline-connection-azure-blob.png)
-
-Connection settings:
-
-- Account name or URL: `flashcards`
-
-Connection credentials:
-
+- Account name or URL: Storage account name 
 - Connection: Create new connection
 - Connection name: FlashCards Azure Blob Storage
-- Data gateway: none
-- Authentication method: Shared Access Signature (SAS)
-- SAS token: `your SAS token`
+- Data gateway: (none)
+- Authentication kind: Shared Access Signature (SAS)
 
-Select `Create` to create the connection. You can select the `Test connection` button to verify the connection.
+Create a SAS token in your Azure Blob Storage account in the Shared Access Signature view and check Service, Container, and Object under Allowed resource types. The other default values can be left as is. Select `Generate SAS token` and copy the token to the clipboard.
 
-In File path, select `browse`, and then select the folder where you want to copy the QR codes. For example, you can create a new folder called `json` in your Azure Blob Storage account and then browse to that as you configure the destination. Save the pipeline.
+![Screenshot of the Azure Blob Storage Shared Access Signature view](assets/azure-blob-storage-sas.png)
 
-## Run the pipeline
+In the `Connection` view, paste the SAS token in the `SAS token` field. Select `Create` to create the connection.
+![Screenshot of the New Connection settings](assets/data-pipeline-connection-azure-blob.png)
 
-Select the `Run` button to run the pipeline. You can monitor the progress of the pipeline in the `Output` tab. First the QR codes will be copied to Azure Blob Storage, and then the JSON file.
+In the `File path` view, select `Browse`, and then select where you want to copy the json file. For example, you can select an existing folder or define a new path named `json`  in your Azure Blob Storage account as the the destination. Select `Next`. In the next view, set the file format to `JSON` and leave the default values as they are and select `Next`. 
+
+Review the configuration of the source and destination and confirm **Start data transfer immediately** is checked and select `Save + Run` and the pipeline will begin to run. You can monitor the progress of the pipeline in the `Output` tab and rename the activity to `Copy JSON file to Azure Blob Storage` in the `General` tab. 
 
 ![Screenshot of the pipeline running](assets/data-pipeline-running.png)
 
-Once the pipeline is finished, you can go to your Azure Blob Storage account and see the files copied there.
 
-![Screenshot of the Azure Blob Storage account with the json folders](assets/azure-blob-storage.png)
+## Run the pipeline
+
+
+![Screenshot of the pipeline running](assets/data-pipeline-running.png)
+
+Once the pipeline is complete, the `generated-QAs.json` will be in the configured destination of the Azure Blob Storage account.
+
+![Screenshot of the Azure Blob Storage account with the generated-QAs JSON file](assets/azure-blob-storage-json.png)
 
 ---
-
 # Publish the Flashcards to a Web App
 
 In your Azure Blob Storage account, go to the containers pane and navigate to the `json` folder. Download the `generated-QAs.json` file to your local machine.
-
-
-![Screenshot of the Azure Blob Storage account with the generated-QAs JSON file](assets/azure-blob-storage-json.png)
 
 
 ## Prepare Web App for deployment
