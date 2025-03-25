@@ -774,19 +774,24 @@ Now that we have the flashcards, we can run a [data pipeline](https://learn.micr
 
 Select the `Workspace` button, and select your existing workspace. In the workspace view, select `+ New item`, then find `Data pipeline` to create a new data pipeline. Name it `flashcards_pipeline`, and then select `Create`.
 
-![Screenshot of the New Data Pipeline dialog in the Synapse Data Engineering tab](assets/new-data-pipeline.png)
+![Screenshot of the New Item view with the data pipeline option visible](assets/fabric-create-pipeline.png)
 
 ## Copy the JSON Data to Azure Blob Storage
 
 In the pipeline, select "Copy data assistant" to start building the pipeline with a with a `Copy data` activity. In the next view you will configure the Copy data activity.
 
+![Screenshot of a data pipeline with an empty canvas.](assets/fabric-new-data-pipeline.png)
+
 In the `Choose a data source` view, select the Lakehouse you previously created.
 In the `Connect to data source` view, select `Files` as the root folder, then in the directory open the `final_data` folder and select `generated-QAs.json` and select **Next**. 
 
+![Screenshot of the New Connection view for a Lakehouse configured as the pipeline source](assets/data-pipeline-source-connection-lakehouse.png)
 
-![Screenshot of the New Connection dialog in the pipeline](assets/data-pipeline-connection.png)
+In the `Choose data destination` view, search and select `Azure Blobs`. 
 
-In the `Choose data destination` view, search and select `Azure Blobs` and enter the following information about the Azure Storage account that you created in the previous step:
+![Screenshot of the New Connection view for Azure Blob storage selected to be the pipeline destination](assets/data-pipeline-connection.png)
+
+Enter the following information about the Azure Storage account that you created in the previous step:
 
 - Account name or URL: Storage account name 
 - Connection: Create new connection
@@ -794,24 +799,23 @@ In the `Choose data destination` view, search and select `Azure Blobs` and enter
 - Data gateway: (none)
 - Authentication kind: Shared Access Signature (SAS)
 
-Create a SAS token in your Azure Blob Storage account in the Shared Access Signature view and check Service, Container, and Object under Allowed resource types. The other default values can be left as is. Select `Generate SAS token` and copy the token to the clipboard.
+![Screenshot of the New Connection view for Azure Blob storage configured as the pipeline destination ](assets/data-pipeline-connection-azure-blob.png)
+
+Create a SAS token in your Azure Blob Storage account in the Portal in the Shared Access Signature view and check Service, Container, and Object under Allowed resource types. The other default values can be left as is. Select `Generate SAS token` and copy the token to the clipboard.
 
 ![Screenshot of the Azure Blob Storage Shared Access Signature view](assets/azure-blob-storage-sas.png)
 
-In the `Connection` view, paste the SAS token in the `SAS token` field. Select `Create` to create the connection.
-![Screenshot of the New Connection settings](assets/data-pipeline-connection-azure-blob.png)
-
 In the `File path` view, select `Browse`, and then select where you want to copy the json file. For example, you can select an existing folder or define a new path named `json`  in your Azure Blob Storage account as the the destination. Select `Next`. In the next view, set the file format to `JSON` and leave the default values as they are and select `Next`. 
 
-Review the configuration of the source and destination and confirm **Start data transfer immediately** is checked and select `Save + Run` and the pipeline will begin to run. You can monitor the progress of the pipeline in the `Output` tab and rename the activity to `Copy JSON file to Azure Blob Storage` in the `General` tab. 
+Review the configuration of the source and destination and confirm **Start data transfer immediately** is checked and select `Save + Run` and the pipeline will begin to run. 
+
+![Screenshot the review and save view](assets/data-pipeline-copy-confirm.png)
+
+You can monitor the progress of the pipeline in the `Output` tab and rename the activity to `Copy JSON file to Azure Blob Storage` in the `General` tab. 
+
 
 ![Screenshot of the pipeline running](assets/data-pipeline-running.png)
 
-
-## Run the pipeline
-
-
-![Screenshot of the pipeline running](assets/data-pipeline-running.png)
 
 Once the pipeline is complete, the `generated-QAs.json` will be in the configured destination of the Azure Blob Storage account.
 
