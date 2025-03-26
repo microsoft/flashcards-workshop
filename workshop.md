@@ -265,7 +265,7 @@ The first step is to import the data from an external source into your Lakehouse
 
 ![Microsoft Learn GitHub](assets/microsoft-learn.png)
 
-## Setup the Lakehouse folder structure
+## Import initial data and setup for processing in your Lakehouse
 
 To begin, we will familiarize with the problem set and the underlying data.  Let's say we want to practice our knowledge on the [Get started with Real-Time Analytics in Microsoft Fabric](https://learn.microsoft.com/training/modules/get-started-kusto-fabric/) module. The source material for this module is available in the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/). In this case navigate to the module folder [learn-pr/wwl/get-started-kusto-fabric](https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric). There you will find an `index.yml` file that contains the metadata for the module. This will list all the units and their respective Markdown files.  To generate our flashcards we will need to specifiy a list of learn modules that we are interested in, we will then process this list to extract all relevant data from Microsoft Learn to assist in the generation of question and answer pairs in later steps.
 
@@ -770,22 +770,42 @@ If you see these file contents in the output of the DataFrame but do not see a f
 
 # Create a Fabric Data Pipeline
 
-Now that we have the flashcards, we can run a [data pipeline](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/training/modules/explore-azure-blob-storage/)) for public consumption.
+## Update Lakehouse with full-set of QnA pairs
 
-Select the `Workspace` button, and select your existing workspace. In the workspace view, select `+ New item`, then find `Data pipeline` to create a new data pipeline. Name it `flashcards_pipeline`, and then select `Create`.
+At this point, if you have followed all workshop instructions up to this point without modification, you would have generated a subset of QnA pairs due to limitations in how many requests we are able to make to Azure OpenAI.  We will begin this section under that assumption.  
 
-![Screenshot of the New Item view with the data pipeline option visible](assets/fabric-create-pipeline.png)
+Of course, our end goal is to produce a static web app with a full-set of questions so you can use it to study for a real exam!  To do achieve this, we will start by updating the `topics.json` and `generated-QAs.json` files that are currently in our Lakehouse with known-working, hand-curated topics questions that cover 12 unique topics in Microsoft Fabric.  
+
+1. Download a copy of the full [topics.json](https://raw.githubusercontent.com/videlalvaro/fabcon-flashcards-workshop-site/refs/heads/main/src/topics.json)
+
+  >Note: You may need to "right-click => Save As" with filename `topics.json`
+
+2. Download a copy of the full [generated-QAs.json](https://raw.githubusercontent.com/videlalvaro/fabcon-flashcards-workshop-site/refs/heads/main/src/generated-QAs.json)
+
+  >Note: You may need to "right-click => Save As" with filename `generated-QAs.json`
+
+3. Navigate to your Lakehouse in Microsoft Fabric and expand the `Files` folder, then select the `final_data` subfolder.  Right-Click the `final_data` subfolder and select `Upload => Upload files`.  Ensure that the "Overwrite if files already exist" option is selected and upload both of the newly downloaded `topics.json` and `generated-QAs.json` into the `final_data` subfolder as shown:
+
+![Screenshot showing upload and overwriting of the full topics.json and generated-QAs.json files into the lakehouse](assetsfabric-upload-full-topic-and-qas.png)
 
 ## Copy the JSON Data to Azure Blob Storage
+
+> For this section, if you do not have access to an Azure account, it is still suggested to read the instructions that follow for completeness, and then skip to the next section.  You will still be able to deploy a functional static web app, as this only requires an active GitHub account, but you will not be able to serve data to your static web app from Azure.
+
+Now that we have the files that represent a full set of flashcards in our Lakehouse, we can run a [data pipeline](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/training/modules/explore-azure-blob-storage/)) for public consumption.
+
+Select the `Workspace` button, and select your existing workspace. In the workspace view, select `+ New item`, then search for `Data pipeline` to create a new data pipeline. Name it `flashcards_pipeline`, and then select `Create`.
+
+![Screenshot of the New Item view with the data pipeline option visible](assets/fabric-create-pipeline.png)
 
 In the pipeline, select "Copy data assistant" to start building the pipeline with a with a `Copy data` activity. In the next view you will configure the Copy data activity.
 
 ![Screenshot of a data pipeline with an empty canvas.](assets/fabric-new-data-pipeline.png)
 
 In the `Choose a data source` view, select the Lakehouse you previously created.
-In the `Connect to data source` view, select `Files` as the root folder, then in the directory open the `final_data` folder and select `generated-QAs.json` and select **Next**. 
+In the `Connect to data source` view, select `Files` as the root folder, then in the directory open the `final_data` folder and select `topics.json` and select **Next**. 
 
-![Screenshot of the New Connection view for a Lakehouse configured as the pipeline source](assets/data-pipeline-source-connection-lakehouse.png)
+![Screenshot of the New Connection view for a Lakehouse configured as the pipeline source](assets/data-pipeline-source-connection-lakehouse-topics.png)
 
 In the `Choose data destination` view, search and select `Azure Blobs`. 
 
@@ -799,27 +819,51 @@ Enter the following information about the Azure Storage account that you created
 - Data gateway: (none)
 - Authentication kind: Shared Access Signature (SAS)
 
-![Screenshot of the New Connection view for Azure Blob storage configured as the pipeline destination ](assets/data-pipeline-connection-azure-blob.png)
-
-Create a SAS token in your Azure Blob Storage account in the Portal in the Shared Access Signature view and check Service, Container, and Object under Allowed resource types. The other default values can be left as is. Select `Generate SAS token` and copy the token to the clipboard.
+Create a SAS token in your Azure Blob Storage account in the Portal in the Shared Access Signature view and check Service, Container, and Object under Allowed resource types. The other default values can be left as is. 
 
 ![Screenshot of the Azure Blob Storage Shared Access Signature view](assets/azure-blob-storage-sas.png)
 
-In the `File path` view, select `Browse`, and then select where you want to copy the json file. For example, you can select an existing folder or define a new path named `json`  in your Azure Blob Storage account as the the destination. Select `Next`. In the next view, set the file format to `JSON` and leave the default values as they are and select `Next`. 
+Select `Generate SAS token` and copy the `SAS token` value to the clipboard and paste it into the `SAS token` field back over in your `Copy Data => Connect to data destination` prompt in Microsoft Fabric then select `Next`.
+
+![Screenshot of the New Connection view for Azure Blob storage configured as the pipeline destination ](assets/data-pipeline-connection-azure-blob.png)
+
+In the `File path` view, select `Browse`, and then select `$web` then select `OK` and then select `Next`.  
+
+![Screenshot of the "Connect to data destination fields part 1](assets/data-pipeline-connect-to-destination1.png)
+
+In the next view, set the file format to `JSON` and leave the default values as they are and select `Next`.  
+
+![Screenshot of the "Connect to data destination fields part 2](assets/data-pipeline-connect-to-destination2.png)
 
 Review the configuration of the source and destination and confirm **Start data transfer immediately** is checked and select `Save + Run` and the pipeline will begin to run. 
 
 ![Screenshot the review and save view](assets/data-pipeline-copy-confirm.png)
 
-You can monitor the progress of the pipeline in the `Output` tab and rename the activity to `Copy JSON file to Azure Blob Storage` in the `General` tab. 
+Select the `Copy data` item and rename the activity to `Copy JSON file to Azure Blob Storage` in the `General` tab. If you click into the empty space in the pipeline editor, you can monitor the progress of the pipeline in by selecting the `Output` tab.  
 
 
 ![Screenshot of the pipeline running](assets/data-pipeline-running.png)
 
 
-Once the pipeline is complete, the `generated-QAs.json` will be in the configured destination of the Azure Blob Storage account.
+Once the pipeline is complete, the `topics.json` file will be in the configured destination of the Azure Blob Storage account.
 
-![Screenshot of the Azure Blob Storage account with the generated-QAs JSON file](assets/azure-blob-storage-json.png)
+![Screenshot of the Azure Blob Storage account with the topics.json file](assets/azure-blob-storage-topics.png)
+
+Back in the pipline editor, select the `Copy Data` item again and select the "Clone" icon at the bottom of the item.  
+
+![Screenshot of the the Clone icon selected in the pipeline editor](assets/data-pipeline-clone.png)
+
+
+Select the newly duplicated `Copy Data` item and configure the source as shown to create another Copy data item for the `generated-QAs.json` file:
+
+![Screenshot of the the Clone icon selected in the pipeline editor](assets/data-pipeline-clone-source.png)
+
+Now save and run your pipeline, once it completes, you should see both files have successfully copied into your Azure storage account:
+
+![Screenshot of the pipeline completed](assets/data-pipeline-completed.png)
+
+![Screenshot of the Azure Blob Storage account with the topics.json and generated-QAs json files](assets/azure-blob-storage-topics-and-qas.png)
+
 
 ---
 # Publish the Flashcards to a Web App
