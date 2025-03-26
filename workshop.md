@@ -720,7 +720,7 @@ Navigate to your Lakehouse, select the `Files` tab and click `Refresh`.  You sho
 
     If you see these file contents in the output of the DataFrame but do not see a folder named `final_data` in the Lakehouse explorer Pane, right-click the `Files` folder in the Lakehouse Explorer and select `Refresh`, it should now be visible.
     
-    ![Screenshot of the output to generate the topics.json file in the lakehouse](assets/fabric-topics-generated)
+    ![Screenshot of the output to generate the topics.json file in the lakehouse](assets/fabric-topics-generated.png)
 
 
 2. Next, we will generate a `generated-QAs.json` that is a full collection of all QnA pairs along with a source pointing to the url from which the question was derived during generation.  This will be used by the static web app to render actual QnA contents.  To create this file, run the following in a new code cell: 
