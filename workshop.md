@@ -177,7 +177,7 @@ It is suggested to leave all other options as they are set by default. You are n
 
 ![Screenshot showing steps to enable Static website for a storage account from Microsoft Azure Portal](assets/azure-enable-static-website.png)
 
-6. Now, on the left-hand side, expand `Settings` and select `Resource sharing (CORS)`, ensure that `Blob service` is highlighted then provide the following details to to configure your web application and click `Save` as shown:
+6. Now, on the left-hand side, expand `Settings` and select `Resource sharing (CORS)`, ensure that `Blob service` is highlighted then provide the following details to configure your web application and click `Save` as shown:
 
 **Allowed origins** - set this value to `*`
 
@@ -270,7 +270,7 @@ Now, navigate to your notebook, select the `Files` folder icon in the Lakhouse e
 
 ![Screenshot showing topic_urls.csv successfully uploaded into the Fabric Lakehouse](assets/fabric-upload-csv.png)
 
-2.  Let's validate that the `topic_urls.csv` was uploaded to the appropriate location by reading the file and displaying the it's contents within our notebook.  Hover your mouse below the Log output of the previous cell to reveal the `+ Code` button, this will add an additional code cell. Now, add the following code to your notebook in the new cell:
+2.  Let's validate that the `topic_urls.csv` was uploaded to the appropriate location by reading the file and displaying it's contents within our notebook.  Hover your mouse below the Log output of the previous cell to reveal the `+ Code` button, this will add an additional code cell. Now, add the following code to your notebook in the new cell:
 
 ```python
 #Open uploaded topic_urls.csv to validate it is in the appropriate location and able to be read
