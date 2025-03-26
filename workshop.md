@@ -197,7 +197,15 @@ You'll learn how to:
 
     ![Screenshot showing steps to enable Resource sharing (CORS) for a storage account from Microsoft Azure Portal](assets/azure-enable-resource-sharing.png)
 
-7. We are now done with the configuration of this service.  We will return to this resource in future steps when creating the Fabric Data Pipeline.
+7. Finally navigate to `Storage browser => Blob containers` and select the `$web` checkbox, then click the 3 dots at the far-right and select `Change acccess level`:
+
+   ![Screenshot showing steps to change access level for a storage account from Microsoft Azure Portal](assets/azure-change-access-level.png)
+
+8. In the drop-down select `Blob (anonymous read access for blobs only)` then `Ok`:
+
+ ![Screenshot showing steps to change access level to anonymous for a blob storage account from Microsoft Azure Portal](assets/azure-change-access-level-anonymous.png)
+
+9. We are now done with the configuration of this service.  We will return to this resource in future steps when creating the Fabric Data Pipeline.
 
 ## Create a Microsoft Fabric Workspace
 
@@ -794,11 +802,11 @@ Of course, our end goal is to produce a static web app with a full-set of questi
 
 Now that we have the files that represent a full set of flashcards in our Lakehouse, we can run a [data pipeline](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/) to copy the data to an external data store ([Azure Blob Storage](https://learn.microsoft.com/training/modules/explore-azure-blob-storage/)) for public consumption.
 
-Select the `Workspace` button, and select your existing workspace. In the workspace view, select `+ New item`, then search for `Data pipeline` to create a new data pipeline. Name it `flashcards_pipeline`, and then select `Create`.
+1. Select the `Workspace` button, and select your existing workspace. In the workspace view, select `+ New item`, then search for `Data pipeline` to create a new data pipeline. Name it `flashcards_pipeline`, and then select `Create`.
 
 ![Screenshot of the New Item view with the data pipeline option visible](assets/fabric-create-pipeline.png)
 
-In the pipeline, select "Copy data assistant" to start building the pipeline with a with a `Copy data` activity. In the next view you will configure the Copy data activity.
+2. Inside the pipeline, select "Copy data assistant" to start building the pipeline with a with a `Copy data` activity. In the next view you will configure the Copy data activity.
 
 ![Screenshot of a data pipeline with an empty canvas.](assets/fabric-new-data-pipeline.png)
 
@@ -817,9 +825,9 @@ Enter the following information about the Azure Storage account that you created
 - Connection: Create new connection
 - Connection name: FlashCards Azure Blob Storage
 - Data gateway: (none)
-- Authentication kind: Shared Access Signature (SAS)
+- Authentication kind: Shared Access Signature (SAS) - see steps below for how to create this
 
-Create a SAS token in your Azure Blob Storage account in the Portal in the Shared Access Signature view and check Service, Container, and Object under Allowed resource types. The other default values can be left as is. 
+Create a SAS token in your Azure Blob Storage account in the Portal in the Shared Access Signature view and check `Service`, `Container`, and `Object` under **Allowed resource types**. The other default values can be left as is. 
 
 ![Screenshot of the Azure Blob Storage Shared Access Signature view](assets/azure-blob-storage-sas.png)
 
@@ -839,7 +847,7 @@ Review the configuration of the source and destination and confirm **Start data 
 
 ![Screenshot the review and save view](assets/data-pipeline-copy-confirm.png)
 
-Select the `Copy data` item and rename the activity to `Copy JSON file to Azure Blob Storage` in the `General` tab. If you click into the empty space in the pipeline editor, you can monitor the progress of the pipeline in by selecting the `Output` tab.  
+3. Select the `Copy data` item and rename the activity to `Copy JSON file to Azure Blob Storage` in the `General` tab. If you click into the empty space in the pipeline editor, you can monitor the progress of the pipeline in by selecting the `Output` tab.  
 
 
 ![Screenshot of the pipeline running](assets/data-pipeline-running.png)
@@ -849,7 +857,7 @@ Once the pipeline is complete, the `topics.json` file will be in the configured 
 
 ![Screenshot of the Azure Blob Storage account with the topics.json file](assets/azure-blob-storage-topics.png)
 
-Back in the pipline editor, select the `Copy Data` item again and select the "Clone" icon at the bottom of the item.  
+4. Back in the pipline editor, select the `Copy Data` item again and select the "Clone" icon at the bottom of the item.  
 
 ![Screenshot of the the Clone icon selected in the pipeline editor](assets/data-pipeline-clone.png)
 
@@ -866,40 +874,80 @@ Now save and run your pipeline, once it completes, you should see both files hav
 
 
 ---
-# Publish the Flashcards to a Web App
+# Publish the Flashcards to a Static Web App
 
-In your Azure Blob Storage account, go to the containers pane and navigate to the `json` folder. Download the `generated-QAs.json` file to your local machine.
+## Fork a copy of the Flashcard Web App
 
 
-## Prepare Web App for deployment
-
-Navigate to the [Flashcards Web App repository](https://github.com/videlalvaro/fabcon-flashcards-workshop-site) and fork the repository.
+1. Navigate to the [Flashcards Web App repository](https://github.com/videlalvaro/fabcon-flashcards-workshop-site) while logged into your GitHub account and fork the repository.
 
 ![Screenshot of the Fabric Flashcards website repository](assets/workshop-website-repo.png)
 
-In the forked repository, locate `generated-QAs.json` on your local machine, then upload it to the root of the `src` folder.
+2. Ensure that "Copy the main branch only" option is checked and select `Create fork`:
+ 
+![Screenshot of the Fabric Flashcards website repository being forked](assets/workshop-website-repo-fork.png)
 
-![Screenshot of the questions and answer JSON file in the root of the src folder of the Fabric Flashcards website repository](assets/.png)
 
-## Change the source of the generated QAs
+## Change the source of the topics and generated QAs
 
-You will update the web app to use `generated-QAs.json` as the data source of the web app. 
+You will update the web app to use your own `topics.json` and `generated-QAs.json` as the data source of the web app. For those with access to an Azure Account, we will serve this from your blob storage account which should now have the latest and greatest curated versions of these files.  For those without access to an Azure Account, we will serve these files from your own GitHub repo.
 
-In `src/app/page.tsx` of the website repository update the lines of code by commenting out the existing `QAsURL` variable, then uncomment the line below it and update the [your GitHub handle] placeholder with the GitHub handle, from the account that forked the website repository. It should look like the code below.
+1. Inside your forked repo, navigate to the `src/app/page.tsx` path of the website repository.  Look for the penicl icon to edit the contents of this file:
+
+![Screenshot of the Fabric Flashcards website repository fork being edited](assets/workshop-website-repo-fork-edit.png)
+
+
+2. Update the existing `topicsURL` and `QAsURL` variables adding as follows, depending on whether you have access to an Azure Account.
+
+If you have access to an Azure Account, navigate to the `Storage browser`, select `Blob containers`, select then `$web` and select the `topics.json file` and copy the URL by clicking the clipboard icon (this value will become `topicsURL`):
+
+![Screenshot showing how to copy topics.json URL from Azure storage in Azure Portal](assets/azure-blob-storage-copy-topics.png)
+
+Simlarly, if you have access to an Azure Account, navigate to the `Storage browser`, select `Blob containers`, and then `$web` and select the `generated-QAs.json file` and copy the URL by clicking the clipboard icon (this value will become `QAsURL`):
+
+![Screenshot showing how to copy generated-QAs.json file URL from Azure storage in Azure Portal](assets/azure-blob-storage-copy-qas.png)
+
+If you do not have access to an Azure Account, modify the `topicsURL` and `QAsURL` variables as shown (this will serve your web app using resources from your forked repo!):
 
 ```javascript
-//const QAsURL = "https://fabconworkshopalvidela.blob.core.windows.net/$web/generated-QAs.json"
+const topicsURL = "https://raw.githubusercontent.com/[your GitHub handle]/fabcon-flashcards-workshop-site/refs/heads/main/src/topics.json"
 
 const QAsURL = "https://raw.githubusercontent.com/[your GitHub handle]/fabcon-flashcards-workshop-site/refs/heads/main/src/generated-QAs.json"
 ```
 
+3. Once you have made your changes in the editor, select `Commit changes` and provide a desciption if you like, then select `Commit changes` again to `Commit diretly to the main branch`:
+
+![Screenshot of the Fabric Flashcards website repository fork committing a change](assets/workshop-website-repo-fork-commit.png)
+
 ## Enable GitHub Pages
 
-Navigate to the forked repository's settings, then navigate to **Pages** under **Code and automation**. Select GitHub Actions in the dropdown under Source. This triggers a deployment to GitHub pages. You can monitor the deployment under **Actions**. 
+GitHub Pages is a static site hosting service that allows you to host a website directly from a repository on GitHub. It can be used to host personal, organizational, or project websites. GitHub Pages takes HTML, CSS, and JavaScript files straight from a repository on GitHub, optionally runs them through a build process, and publishes as a website.
+
+1. Navigate to your forked repository and select `Settings`, then navigate to **Pages** under **Code and automation**. Select `GitHub Actions` in the dropdown under `Source`. This will configure your repository to a deploy a static website to GitHub pages using GitHub Actions. 
 
 ![Screenshot of the Pages view in the repository's settings.](assets/github-actions-config.png)
 
-After deployment is complete you may navigate to the site, which can also be found in the **Pages** repository settings view.
+2. Next, navigate to **Actions**, when prompted, select `I understand my workflows, go ahead and enable them`
+
+![Screenshot of notification that workflows aren't configured to run on the repository.](assets/github-actions-confirm.png)
+
+3. Select the Action titled `Deploy Next.js site to Pages` then choose `Run workflow` and ensure that `Branch:main` is selected then click the `Run workflow` button to kick off the deployment.
+
+![Screenshot showing where to select to start the deployment workflow.](assets/github-actions-run.png)
+
+4. The deployment should now be in progress, it should take a minute or so to copmlete
+
+![Screenshot showing the deployment workflow running.](assets/github-actions-running.png)
+
+5. When you have confirmed the deployment has completed successfully, navigate to `Settings` then select  **Pages** under **Code and automation**. Notice the mention that "Your site is live at" that then displays the URL for your static web.  Click the `Visit site` link to navigate to your newly deployed flashcard site.
+
+![Screenshot showing the live URL of your deployed static web site.](assets/github-pages-live.png)
+
+6. If using a devtools capable browser, press 'F12' to open the devtools pane, then refresh your web site, and select the `Network` tab.  Verify that your `topic.json` and `generated-QAs.json` are being served from your modified location.  The example below shows a static site that is now pulling data from Azure Storage:
+
+
+![Screenshot sources of topics.json and generated-QAs.json in the deployed static web site.](assets/github-pages-live-inspect.png)
+
 
 ---
 
@@ -907,13 +955,15 @@ After deployment is complete you may navigate to the site, which can also be fou
 
 This concludes this workshop, we hope you enjoyed it and learned something new.
 
-In this workshop, you learned how to use Microsoft Fabric and Azure OpenAI to generate a set of study flashcards. You connected Fabric to Azure Blob Storage to store the flashcards.
+In this workshop, you learned how to use Microsoft Fabric and Azure OpenAI Service in Azure AI Foundry to generate a set of study flashcards. You connected Fabric to Azure Blob Storage to store the flashcards and then served them in a static web app to make them available to anyone, anywhere, anytime!
+
+Special thanks to [Kevin Comba Gatimu](https://github.com/kelcho-spense), Microsoft MVP, who assisted in development of the mechanism used for fetching markdown files from Github!
 
 ## Clean up resources
 
 <div class="important" data-title="Important">
 
-> After completing the workshop, remember to delete the Azure Resources you created to avoid incurring unnecessary costs!
+> After completing the workshop, you may to delete your Microsoft Fabric items and / or Azure Resources that were created (especially if you do not plan on using them further) to avoid incurring unnecessary costs!
 
 </div>
 
