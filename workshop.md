@@ -247,28 +247,10 @@ To learn more about Lakehouses in Microsoft Fabric, refer to [the online documen
 
 ![Screenshot of the successful pip installation inside a Microsoft Fabric notebook](assets/fabric-notebook-pip-install.png)
 
-2. Hover your mouse below the Log output to reveal the `+ Code` button, this will add an additional code cell.  Add the following code to this cell to import the packages that will be used in later cells for fetching Markdown files and processing JSON / CSV formats.  
-
-```bash
-#Package imports for fetching Markdown files and processing JSON / CSV formats
-
-import re
-import requests
-import os
-import json
-import csv
-```
-
-Run the cell by selecting the "Play" icon to the left of the cell.
-
->Note: When a notebook session is first created, package imports will not be available unless they have been imported into the session.  If you receive errors in subsequent cells mentioning missing imports, you likely need  re-run this cell as this usually indicates that your session was closed (relinquishing your imported packages).
-
-![Screenshot of the successful Python imports inside a Microsoft Fabric notebook](assets/fabric-notebook-imports.png)
-
 
 ---
 
-# Import Data to your Lakehouse
+# Import and Process Data in your Lakehouse
 
 The first step is to import the data from an external source into your Lakehouse. For this workshop, we will use Microsoft Learn modules as our source material. We'll fetch the learn module Markdown files from the Microsoft Learn GitHub repository and import them into our Lakehouse.
 
@@ -276,32 +258,28 @@ The first step is to import the data from an external source into your Lakehouse
 
 ## Setup the Lakehouse folder structure
 
-Let's say we want to practice our knowledge on the [Get started with Real-Time Analytics in Microsoft Fabric](https://learn.microsoft.com/training/modules/get-started-kusto-fabric/) module. The source material for this module is available in the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/). In this case navigate to the module folder [learn-pr/wwl/get-started-kusto-fabric](https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric). There you will find an `index.yml` file that contains the metadata for the module. This will list all the units and their respective Markdown files.
+To begin, we will familiaize with the problem set and the underlying data.  Let's say we want to practice our knowledge on the [Get started with Real-Time Analytics in Microsoft Fabric](https://learn.microsoft.com/training/modules/get-started-kusto-fabric/) module. The source material for this module is available in the [Microsoft Learn GitHub repository](https://github.com/MicrosoftDocs/learn/). In this case navigate to the module folder [learn-pr/wwl/get-started-kusto-fabric](https://github.com/MicrosoftDocs/learn/tree/main/learn-pr/wwl/get-started-kusto-fabric). There you will find an `index.yml` file that contains the metadata for the module. This will list all the units and their respective Markdown files.  To generate our flashcards we will need to specifiy a list of learn modules that we are interested in, we will then process this list to extract all relevant data from Microsoft Learn to assist in the generation of question and answer pairs in later steps.
 
 ![Screenshot of the Microsoft Learn GitHub Get started with Real-Time Analytics in Microsoft Fabric learn module](assets/microsoft-learn-github-kusto.png)
 
-To obtain the file URL, select the `index.yml` on GitHub and select the `Raw` button. Copy the URL since you'll use it in the code below.
+1. We will begin by uploading a CSV file containing a list of topics related to Microsoft Fabric along with an associated URL pointing to relevant module content on Microsoft Learn.  We have prepared a list of topics with associated learn module urls. Start by downloading the file [topic_urls.csv](https://raw.githubusercontent.com/videlalvaro/fabcon-flashcards-workshop-site/refs/heads/main/initial_data/topic_urls.csv) 
 
-Add the following code to your notebook into a new cell:
+>Note: You may need to "right-click => Save As" with filename `topic_urls.csv`
+
+Now, navigate to your notebook, select the `Files` folder icon in the Lakhouse explorer and right-click to reveal the options menu, from here select `New subfolder` and name this folder `initial_data`.  Expand the `Files` tab to reveal the `initial_data` folder in the Lakehouse explorer, right-click it and select `Upload => Upload files`.  Select the Folder icon in the `Upload files` pane, then navigate to the downloaded `topic_urls.csv` file and select `Upload`.  The `topic_urls.csv` should now appear in your Lakehouse within the `initial_data` folder as shown:
+
+![Screenshot showing topic_urls.csv successfully uploaded into the Fabric Lakehouse](assets/fabric-upload-csv.png)
+
+2.  Let's validate that the `topic_urls.csv` was uploaded to the appropriate location by reading the file and displaying the it's contents within our notebook.  Hover your mouse below the Log output of the previous cell to reveal the `+ Code` button, this will add an additional code cell. Now, add the following code to your notebook in the new cell:
 
 ```python
-import requests
-import os
-import yaml
-
-# learn module metadata URL
-LEARN_GITHUB_BASE = "https://raw.githubusercontent.com/MicrosoftDocs/learn/main/learn-pr"
-url = f"{LEARN_GITHUB_BASE}/wwl/get-started-kusto-fabric/index.yml"
-
-# load module metadata
-response = requests.get(url)
-index_data = yaml.safe_load(response.content)
-
-# print the module metadata
-index_data
+#Open uploaded topic_urls.csv to validate it is in the appropriate location and able to be read
+with open('/lakehouse/default/Files/initial_data/topic_urls.csv') as list_of_modules:
+    for line in list_of_modules:
+        print(line)
 ```
 
-Run the cell.
+    Run the cell.
 
 <div class="warning" data-title="Note">
 
@@ -309,111 +287,212 @@ Run the cell.
 
 </div>
 
-Now that the YAML file is loaded in the `index_data` variable, we can use it to build the folder structure in our Lakehouse.
+![Screenshot showing output from reading the content of topic_urls.csv](assets/fabric-read-topics.png)
 
-```python
-# use the module uid to calculate the folder structure of the learn module
-module_uid = index_data['uid']
+3. Add the following into a new code cell to import the packages and function definitions that will be used in later cells for fetching Markdown files from MS Learn and processing JSON / CSV formats.  
 
-module_units = index_data['units']
+```bash
+#Package imports and function definitions for fetching Markdown files and processing JSON / CSV formats from GitHub
 
-# convert the module uid to a path
-uid_to_path = module_uid.replace(".", "/")
+import re
+import requests
+import os
+import json
+import csv
 
-# Path to Lakehouse Files
-LAKEHOUSE_FILE_PATH="/lakehouse/default/Files"
+def parse_github_url(url):
+    """
+    Parses a GitHub URL and extracts the owner, repository name, branch, and path.
+    Sample: https://github.com/MicrosoftDocs/learn/blob/main/learn-pr/wwl/get-started-kusto-fabric/index.yml
+    """
+    pattern = r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/blob/main/(?P<branch>[^/]+)/(?P<path>.+)"
+    match = re.match(pattern, url)
+    if match:
+        return match.groupdict()
+    else:
+        raise ValueError("Invalid GitHub URL format.")
 
-# Path to Markdown Files
-MARKDOWN_PATH=f"{LAKEHOUSE_FILE_PATH}/markdown"
+def download_and_save_file(file_url, lakehouse_save_path):
+    """
+    Downloads a file from GitHub and saves it to the specified path in the Lakehouse.
+    """
+    try:
+        response = requests.get(file_url)
+        if response.status_code == 200:
+            # Create directories in Lakehouse if they don't exist
+            print(f"lakehouse_save_path: {lakehouse_save_path}")
+            dir_path = os.path.dirname(lakehouse_save_path)
+            print(f"dir_path: {dir_path}")
+            notebookutils.fs.mkdirs(dir_path)
+            print(dir_path)
+            # os.makedirs(dir_path, exist_ok=True)
+            # Save the file content to Lakehouse
+            notebookutils.fs.put(lakehouse_save_path, response.text, overwrite=True)
+            # with open(lakehouse_save_path, 'w') as f:
+            #     f.write(response.text)
+            print(f"Successfully downloaded {lakehouse_save_path}")
+            return lakehouse_save_path
+        else:
+            print(f"Failed to download {file_url}: HTTP {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"Error downloading {file_url}: {e}")
+        return False    
 
-# Path to Learn Module
-LEARN_MODULE_PATH=f"{MARKDOWN_PATH}/{uid_to_path}"
-
-# create folder to store our Markdown files
-os.makedirs(LEARN_MODULE_PATH, exist_ok=True)
-
-# save the index.yml file to the Lakehouse
-filename = url.rsplit("/")[-1]
-with open(os.path.join(LEARN_MODULE_PATH, filename), "wb") as f:
-    f.write(response.content)
+def download_folder_contents(contents, repo_path, base_save_path):
+    """
+    Recursively downloads contents from a GitHub repository and saves them to the Lakehouse.
+    """
+    
+    saved_files = []
+    
+    for item in contents:
+        file_name = item['name']
+        download_url = item['download_url']
+        # Compute the relative path of the file within the module
+        relative_path = item['path'].replace(repo_path + '/', '')
+        print(f"relative_path: {relative_path}")
+        # Construct the Lakehouse save path
+        lakehouse_save_path = f"{base_save_path}/{relative_path}"
+        # Download and save the file
+        tmp = download_and_save_file(download_url, lakehouse_save_path)
+        if tmp:
+            saved_files.append(tmp)
+    
+    return saved_files    
 ```
 
-If you go back to the Microsoft Learn GitHub repository, you will see that the Markdown files are stored in the `includes` folder. Let's create an equivalent folder in our Lakehouse. 
+Run the cell by selecting the "Play" icon to the left of the cell.
 
-![Screenshot of the Microsoft Learn GitHub Get started with Real-Time Analytics in Microsoft Fabric learn module includes folder](assets/microsoft-learn-github-includes.png)
+>Note: When a notebook session is first created, package imports and function definitions will not be available unless they have been imported / defined in the active session.  If you receive errors in subsequent cells mentioning missing imports or defs, you likely need re-run this cell as this usually indicates that your session was closed (relinquishing your imports and function defintions).
 
-Add the following code into a new cell:
-
-```python
-# create folder for includes (Markdown file location)
-INCLUDES_PATH=f"{LEARN_MODULE_PATH}/includes"
-os.makedirs(INCLUDES_PATH, exist_ok=True)
-```
-
-On the left side pane of the notebook, you should see the folder structure created in the Lakehouse. In the Explorer, select Lakehouses, then Files, and you should see the `markdown` folder tree structure we've just created.
-
-![Screenshot of the Lakehouse Explorer with the markdown folder](assets/lakehouse-explorer-markdown.png)
+![Screenshot of the successful Python imports and function definitions inside a Microsoft Fabric notebook](assets/fabric-notebook-imports.png)
 
 ## Fetch the markdown data
 
-Now that we have the folder structure in place, we can start downloading the Markdown files. If you look at the units in the `index.yml` file, you will see that each unit has a unique identifier. We can use this identifier to fetch the Markdown file from the Microsoft Learn GitHub repository. 
-
-```yaml
- 'units': ['learn.wwl.get-started-kusto-fabric.introduction',
-  'learn.wwl.get-started-kusto-fabric.define-real-time-analytics',
-  'learn.wwl.get-started-kusto-fabric.describe-kusto-databases-tables',
-  'learn.wwl.get-started-kusto-fabric.write-queries-kusto-query-language',
-  'learn.wwl.get-started-kusto-fabric.exercise-use-kusto-query-data-onelake',
-  'learn.wwl.get-started-kusto-fabric.knowledge-check',
-  'learn.wwl.get-started-kusto-fabric.summary'],
-```
-
-So if we want to fetch the `introduction` unit, we have to build the following URL: `https://raw.githubusercontent.com/MicrosoftDocs/learn/main/learn-pr/wwl/get-started-kusto-fabric/includes/1-introduction.md`. Note that the unit identifier is prefixed with a number, which is the order of the unit in the `index.yml` file.
-
-Add the following code into a new cell:
+1.  With our data processing functions now defined, we will use the BeautifulSoup package to parse the html content for all urls listed inside of `topic_urls.csv`, we will specifically scan the underlying metadata to produce a json document containing `module_url`, `topic`, `title`, and `index_yaml` (the link to the underlying markdown source for the module in question). Add the following to a new code cell, and run it.  The resulting output will print out the url of each module as it parses through the list and display a table showing the resulting contents of the json document (`module_metadata.json`) in a Spark DataFrame.
 
 ```python
-# list to keep track of the files
-file_list = []
+#Obtain metadata for all modules in topic_urls.csv
 
-i = 0
-for u in module_units:
-    i += 1
-    
-    # get the unit identifier (introduction, define-real-time-analytics, etc.)
-    include = u.rsplit(".")[-1]
+import requests
+from bs4 import BeautifulSoup
 
-    # skip the summary, exercise, and knowledge-check units
-    if include == "summary" or include == "exercise" or include == "knowledge-check":
-        continue
+module_metadata = []
 
-    include_unit = f"{i}-{include}"
-    
-    # fetch module includes (the actual Markdown files)
-    include_url = f"{LEARN_GITHUB_BASE}/wwl/get-started-kusto-fabric/includes/{include_unit}.md"
-    include_response = requests.get(include_url)
+with open('/lakehouse/default/Files/initial_data/topic_urls.csv') as list_of_modules:
+    for line in list_of_modules:
+        topic = line.split(",")[0]
+        url = line.split(",")[1].strip()
+        title = ""
+        desc = ""
+        index_yaml = ""
+        print(url)
+        
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, features="html.parser")
 
-    # File name is the last part of the URL
-    include_filename = include_url.rsplit("/")[-1]
-    markdown_file = os.path.join(INCLUDES_PATH, include_filename)
+        metas = soup.find_all('meta')
+        for meta in metas:
+            # original_content_git_url
+            # <meta name="original_content_git_url" content="https://github.com/MicrosoftDocs/learn-pr/blob/live/learn-pr/wwl/get-started-kusto-fabric/index.yml" />
+            # https://github.com/MicrosoftDocs/learn-pr/blob/live/learn-pr/wwl/get-started-kusto-fabric/index.yml
+            # https://github.com/MicrosoftDocs/learn/blob/main/learn-pr/wwl/get-started-kusto-fabric/index.yml
+            
+            if 'property' in meta.attrs and meta.attrs['property'] == 'og:title':
+                title = meta.attrs['content']
+                # print(f"Title: {title}")
+            if 'property' in meta.attrs and meta.attrs['property'] == 'og:description':
+                desc = meta.attrs['content']
+                # print(f"Desc: {desc}")
+            if 'name' in meta.attrs and meta.attrs['name'] == 'github_feedback_content_git_url':
+                content = meta.attrs['content']
+                index_yaml = content
+                # content = content.replace("https://github.com/MicrosoftDocs/learn/blob/main/", "")
+                # content = content.replace("/index.yml", "")
 
-    # Save the file to the Lakehouse
-    with open(markdown_file, "wb") as f:
-        f.write(include_response.content)
-    
-    # keep track of the files
-    file_list.append({"file": markdown_file, "source": include_unit})
+                # file_list = list_markdown_files(f"{LEARN_PATH}/{content}/includes")
+        temp = {
+            "topic": topic,
+            "module_url": url,
+            "title": title,
+            "desc": desc,
+            "index_yaml": index_yaml
+        }
 
-file_list
+        module_metadata.append(temp)
+
+with open("/lakehouse/default/Files/initial_data/module_metadata.json", "w") as f:
+    json.dump(module_metadata, f)
+
+df = spark.read.option("multiline", "true").json("Files/initial_data/module_metadata.json")
+# df now is a Spark DataFrame containing JSON data from "Files/initial_data/module_metadata.json".
+display(df)
 ```
 
-If you go back to the Lakehouse Explorer, you should see the Markdown files in the `includes` folder. Select the three dots next to the `includes` folder and select `Refresh` to see the files.
+![Screenshot of the code cell that produces module_metadata.json](assets/fabric-module-metadata1.png)
 
-![Screenshot of the Lakehouse Explorer with the includes folder](assets/lakehouse-explorer-includes.png)
+![Screenshot of the output of the code that produces module_metadata.json](assets/fabric-module-metadata2.png)
+
+The results of this cell should create a new file in the `initial_data` folder of your Lakehouse named `module_metadata.json`.  If you see these file contents in the output of the DataFrame but no file of this name listed in the Lakehouse explorer Pane, right-click the `initial_data` folder in the Lakehouse Explorer and select `Refresh`, it should now be visible.
+
+2. We now have the url to the associated `index_yaml` files for all modules that were originally specified in `topic_urls.csv`.  These results are contained in the `module_metadata.json` produced in the previous step. Let's now loop through this list to get a full collection of all units within the module. The units contain the markdown that represents the actual content of the module.  Once we have this data in our Lakehouse, we are ready to generate Questions and Answers from the contents of the units.  To generate this list of module metadata with associated unit markdown files, create a new code cell and copy over this code snippet that pulls all associated markdown file urls (mds) for each module directly from GitHub:
+
+```python
+#Obtain markdown files for all in units of each module listed in module_metadata.json
+
+# Define GitHub API URL
+GITHUB_API_URL = "https://api.github.com/repos"
+LAKEHOUSE_FILE_PATH = "Files"
+
+with open('/lakehouse/default/Files/initial_data/module_metadata.json') as list_of_modules:
+    module_metadata = json.load(list_of_modules)
+    module_metadata_with_mds = []
+    for metadata in module_metadata:
+        # GITHUB_URL = "https://github.com/MicrosoftDocs/learn/blob/main/learn-pr/wwl/get-started-lakehouses/index.yml"
+        # print(line.split(",")[1])
+        GITHUB_URL = metadata["index_yaml"]
+        parsed_url = parse_github_url(GITHUB_URL)
+
+        OWNER = parsed_url['owner']
+        REPO = parsed_url['repo']
+        BRANCH = parsed_url['branch']
+        REPO_PATH = parsed_url['path']
+
+        MODULE_NAME = os.path.dirname(REPO_PATH)
+        MARKDOWN_PATH = f"{LAKEHOUSE_FILE_PATH}/markdown"
+
+        api_url = f"{GITHUB_API_URL}/{OWNER}/{REPO}/contents/{BRANCH}/{MODULE_NAME}/includes"
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            contents = response.json()
+            # print(contents)
+            saved_mds = download_folder_contents(contents, REPO_PATH, MARKDOWN_PATH)
+            metadata['markdowns'] = saved_mds
+            module_metadata_with_mds.append(metadata)
+        else:
+            print(f"Failed to list contents of {REPO_PATH}: HTTP {response.status_code}")
+            print(f"Response: {response.text}")
+    
+    with open("/lakehouse/default/Files/initial_data/module_metadata_with_mds.json", "w") as final_metadata:
+        json.dump(module_metadata_with_mds, final_metadata)
+        
+df = spark.read.option("multiline", "true").json("Files/initial_data/module_metadata_with_mds.json")
+# df now is a Spark DataFrame containing JSON data from "Files/initial_data/module_metadata_with_mds.json".
+display(df)
+```
+
+>Note: This cell usually takes about a minute or two to complete.  Additionally, this particular cell may be subject to GitHub API rate-limiting / throttling.  If many users execute this cell from a single outbound ip address, it may result in blocking of subsequent requests until the throttling is discontinued.  If delivering this content as an interactive workshop, you may want to have a pre-generated result on hand, just in case!
+
+The results of this cell should create a new file in the `initial_data` folder of your Lakehouse named `module_metadata_with_mds.json`.  If you see these file contents in the output of the DataFrame but no file of this name listed in the Lakehouse explorer Pane, right-click the `initial_data` folder in the Lakehouse explorer and select `Refresh`, it should now be visible.
+The results of this cell should also create new folder named `markdown` in the `Files` folder of the Lakhouse explorer pane.  If you do not see the `markdown` folder under the `Files` folder in the Lakehouse explorer Pane, right-click the `Files` folder in the Lakehouse explorer and select `Refresh`, it should now be visible.
+
+![Screenshot of the code cell that produces module_metadata_with_mds.json](assets/fabric-module-metadata-mds.png)
+
 
 ---
 
-# Generate Flashcards using Azure OpenAI
+# Generate Flashcards using Azure OpenAI Service in Azure AI Foundry
 
 Now that we have the Markdown files in our Lakehouse, we can use Azure OpenAI to generate a set of study flashcards.
 
@@ -421,157 +500,160 @@ Now that we have the Markdown files in our Lakehouse, we can use Azure OpenAI to
 
 <div class="warning" data-title="Note">
 
-> It is expected that you have access to Azure OpenAI, otherwise you can edit the code below to use any other OpenAI compatible API.
+> If you are using an Azure account that does not have access to Azure Open AI Service in Azure Foundry (Azure Free Trial accounts are not supported!), it is suggested to read the instructions that follow for completeness, then skip to the next step.  
+
+If you are at a workshop, your proctor may share an API Key to allow you access to a service that has been configured for the event. 
 
 </div>
 
-On your notebook, add the following code to configure the Azure OpenAI client:
+1. In your notebook, add the following code which is used to configure the Azure OpenAI client:
 
 ```python
-import openai
-from notebookutils.mssparkutils.credentials import getSecret
+#Set prompts and configure Azure OpenAI client
 
-KEYVAULT_ENDPOINT = "https://{your-vault}.vault.azure.net/"
+TASK_GUIDELINES = "Your task is help people learn from tutorials. You will receive a Markdown document, and extract from it pairs of questions and answers that will help the reader learn about the text."
 
-openai.api_key = getSecret(KEYVAULT_ENDPOINT, "your-openai-keyvault-secret-key")
-
-openai.api_base = "https://{your-openai-endpoint}.openai.azure.com/"
-openai.api_type = 'azure'
-openai.api_version = '2023-05-15'
-deployment_name='sk-tests'
-```
-
-## Create the Flashcards Prompt
-
-To generate the flashcards, we need to provide a prompt to the Azure OpenAI API. The idea is to tell the model to generate questions based on the content of the Markdown files.
-
-The flashcard PDF generator app expects a list with the following shape, containing our generated questions and answers:
-
-```json
-[
-  {
-    "id": "001",
-    "question": "What is the history behind flashcards?",
-    "answer": "Flashcards have been used as a learning tool since the 19th century, with their roots traced back to Germany.",
-    "category_name": "History",
-    "qr_url": "https://example.com/qrcodes/001.png"
-  }
-]
-```
-
-To generate a JSON like that, add the following code to your notebook in a new cell:
-
-```python
-class LearnAssistant:
-
-    _openai = None
-    _deployment_name = None
-
-    def __init__(self, openai, deployment_name):
-        self.name = "Learn Assistant"
-        self._openai = openai
-        self._deployment_name = deployment_name
-
-    def generate_questions(self, text):
-        system_message = """
-        You are an assistant designed to help people learn from tutorials. 
-        You will receive a Markdown document, and extract from it pairs of questions and answers that will help the reader learn about the text. 
-        Questions and answers should be based on the input text.
-        Extract at least 5 different pairs of questions and answers. Questions and answers should be short.
-        Output should be valid JSON format.
-        Here's an example of your output format: [{"Q": "What is the name of the assistant?", "A": "Learn Assistant"}]
-        """
-        user_message = text
-
-        return self.call_openai(
-            self._deployment_name, 
-            system_message=system_message,
-            user_message=user_message
-        )
-    
-    def call_openai(self, deployment_name, system_message, user_message):
-        response = self._openai.ChatCompletion.create(
-            engine=deployment_name,
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message}
-            ]
-        )
-
-        return response['choices'][0]['message']['content']
-```
-
-The key part of this code is the prompt:
-
-```python
-"""You are an assistant designed to help people learn from tutorials. 
-You will receive a Markdown document, and extract from it pairs of questions and answers that will help the reader learn about the text. 
-Questions and answers should be based on the input text.
-Extract at least 5 different pairs of questions and answers. Questions and answers should be short.
-Output should be valid JSON format.
-Here's an example of your output format: [{"Q": "What is the name of the assistant?", "A": "Learn Assistant"}]
+MODEL_GUIDELINES = """
+Please follow these guidelines:
+1. Questions and answers should be based on the input text.
+2. Extract at least 5 different pairs of questions and answers. Questions and answers should be short.
+3. Output should be valid JSON format.
+4. Here's an example of your output format: [{"Q": "What is the name of the assistant?", "A": "Learn Assistant"}]
+5. Output a plain array as explained above. Do not print anything else.
 """
+
+AZURE_OPENAI_API_KEY="<REPLACE WITH API KEY>"
+AZURE_OPENAI_ENDPOINT="<REPLACE WITH API ENDPOINT>"
+AZURE_OPENAI_API_VERSION="2024-08-01-preview"
 ```
 
-The idea is to tell the model to only generate questions and answers based on the input text. The model should generate at least 5 different pairs of questions and answers, and we provide a sample JSON format for the output, since that's what our code is going to use next.
+
+The idea is to tell the model to only generate questions and answers based on the input text. The model should generate at least 5 different pairs of questions and answers, and we provide a sample JSON format for the output, since our static web app will use that format to render interactive flashcards.
+
+2. Now that we have configured the client, let's test our prompt by supplying it with the contents of one of the md files from our Lakehouse to ensure our Azure OpenAI Service is working as expected.  Copy the following into a new cell and run it:
+
+```python
+#Demonstrate example QnA request using content of single md file to test Azure OpenAI API Connection
+
+import os
+from azure.ai.inference import ChatCompletionsClient
+from azure.ai.inference.models import SystemMessage, UserMessage
+from azure.core.credentials import AzureKeyCredential
+
+model_name = "gpt-4o"
+
+client = ChatCompletionsClient(
+    endpoint=AZURE_OPENAI_ENDPOINT,
+    credential=AzureKeyCredential(AZURE_OPENAI_API_KEY),
+)
+
+md = "Files/markdown/learn-pr/wwl/introduction-end-analytics-use-microsoft-fabric/includes/1-introduction.md"
+with open("/lakehouse/default/" + md, "r") as f:
+    input_text = f.read()
+
+response = client.complete(
+    messages=[
+        SystemMessage(content=TASK_GUIDELINES),
+        SystemMessage(content=MODEL_GUIDELINES),
+        UserMessage(content="Here's the document:"),
+        UserMessage(content=input_text)
+    ],
+    max_tokens=4096,
+    temperature=1.0,
+    top_p=1.0,
+    model=model_name
+)
+
+print(response.choices[0].message.content)
+```
+
+You should see a collection of five QnA pairs generated based on the contents of the supplied markdown file:
+
+![Screenshot of an example result that tests the Azure OpenAI API configuration](assets/fabric-openai-test.png)
 
 ## Generate the flashcards
 
+1. Now we are almost ready to create flashcards by iterating through all of the markdown files that were retrieved in previous steps.  First we will define a function that wil parse the model response into CSV format.  Add the following to a code cell and execute it:
+
 ```python
-import json
+#Process JSON response from model and write specific data to a CSV file
 
-# this is required for the QR code public URL generation
-STORAGE_ACCOUNT="<your-storage-account-name>"
+import csv
 
-# list to keep track of the generated QAs
-QAS = []
-
-# get the module name
-module_name = module_uid.split(".")[-1]
-flash_card_id = 1
-
-for entry in file_list:
-  file = entry["file"]
-  source = entry["source"]
-  print(file)
-  with open(file, "r") as f:
-      input_text = f.read()
-      genQas = LearnAssistant(openai, deployment_name).generate_questions(input_text)
-      print(genQas)
-
-      # convert the generated questions and answers to a list
-      temp = json.loads(genQas)
-
-      # get the module name
-      module_name = module_uid.split(".")[-1]
-      
-      # create the source URL to the Microsoft Learn module
-      source_url = f"https://learn.microsoft.com/training/modules/{module_name}/{source}"
-
-      # create the QR code URL pointing to your Azure Blob Storage account
-      qr_url = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net/qrcodes/{flash_card_id}.png"
-      
-      # add the module name and source URL to the QAs
-      for t in temp:
-
-          card = {
-            "id": flash_card_id, 
-            "question": t["Q"], 
-            "answer": t["A"], 
-            "category_name": "Real-Time",
-            "source_url": source_url,
-            "qr_url": qr_url
-          }
-
-          QAS.append(card)
-          flash_card_id += 1
-  
-  
-with open(f"{LAKEHOUSE_FILE_PATH}/generated-QAs.json", "w") as fp:
-    json.dump(QAS , fp)
+def dump_to_csv(writer, file_metadata, md, model_response):
+    try:
+        qas = json.loads(model_response)
+        # topic|module_url|unit_url|include_name|include_path|question|answer
+        for qa in qas:
+            include_name = md.split("/")[-1]
+            print(f"processing: {include_name}")
+            tmp = {
+                "topic": file_metadata["topic"],
+                "module_url": file_metadata["module_url"],
+                "unit_url": file_metadata["module_url"] + include_name.replace(".md", ""),
+                "include_name": include_name,
+                "include_path": md.replace("Files/markdown/", ""),
+                "question": qa["Q"],
+                "answer": qa["A"] 
+            }
+            writer.writerow(tmp.values())
+    except json.JSONDecodeError as e:
+        with open("/lakehouse/default/Files/initial_data/errors.txt", "a") as error_file:
+            print(e)
+            error_file.write(md)
+            error_file.write(e)
+            error_file.write(model_response)
 ```
 
-As the code runs, you should see the generated questions and answers in the output. The questions and answers are stored in the `QAS` list, which is then saved in the Lakehouse to a JSON file called `generated-QAs.json`.
+![Screenshot of the dump_to_csv method defined in the notebook](assets/fabric-dumpcsv-definition.png)
+
+2. With this method defined, we are now prepared to iterate through all of our markdown files and gernerate a full set of flashcards.  For the purposes of demonstration, we will provide code that can be uncommented to do a full pass, but will only process the first markdown file.  If you are attending a workshop, check with the proctors if you plan to execute this snippet with any modifications as it could be costly in terms of time and may render the OpenAI Service unusable if throttling is encountered.
+
+```python
+#Demonstration of full loop to iterate through all markdown files and dump relevant content to CSV
+
+import json
+import csv
+
+with open("/lakehouse/default/Files/initial_data/module_metadata_with_mds.json") as f:
+    file_list = json.load(f)
+
+csv_file = '/lakehouse/default/Files/initial_data/flashcards-noncurated.csv'
+
+with open(csv_file, mode='w', newline='') as file:
+    writer = csv.writer(file, delimiter='|')
+    # write the CSV headers
+    writer.writerow(["topic", "module_url", "unit_url", "include_name", "include_path", "question", "answer"])
+
+    # Comment the following line if you want to create a full set of flashcards instead of just one learn module
+    file_list = [file_list[0]]
+
+    for file in file_list:
+        print(file)
+        for md in file['markdowns']:
+            with open("/lakehouse/default/" + md, "r") as f:
+                input_text = f.read()
+
+                response = client.complete(
+                    messages=[
+                        SystemMessage(content=TASK_GUIDELINES),
+                        SystemMessage(content=MODEL_GUIDELINES),
+                        UserMessage(content="Here's the document:"),
+                        UserMessage(content=input_text)
+                    ],
+                    max_tokens=4096,
+                    temperature=1.0,
+                    top_p=1.0,
+                    model=model_name
+                )
+                model_response = response.choices[0].message.content
+                dump_to_csv(writer, file, md, model_response)
+                # Also remove the following break to generate QnA pairs for all markdown files. This can take a long time to complete depending on the amount of markdown files to be processed.
+                break
+```
+
+
+As the code runs, you should see the generated questions and answers in the output. The questions and answers are saved to a file in the `initial_data` subfolder in the Lakehouse explore named `flashcard-uncurated.csv`.  The name of this file denotes that these results have not yet gone through human review, which is not only good for quality assurance but also to ensure that [Responsible AI Guidelines](https://www.microsoft.com/ai/principles-and-approach) are employed.  If you do not see this file, hover your mouse above the `initial_data` subfolder in the Lakehouse expplorer, right-click, and select `Refresh`, it should now be visible..
 
 <div class="information" data-title="Note">
 
@@ -579,63 +661,105 @@ As the code runs, you should see the generated questions and answers in the outp
 
 </div>
 
-## Create the Flashcards QR Codes
-
-Now that we have the questions and answers, we can generate QR codes for each flashcard. The QR code will point to the source material in the Microsoft Learn GitHub repository. In this way we follow [Responsible AI practices](https://www.microsoft.com/en-us/ai/responsible-ai) by providing the source material for each flashcard, so not only the user can learn more about the topic but also know where the LLM model got the information from.
-
-Add the following code to your notebook in a new cell to have a folder to store the QR codes:
+3. Let's take a look at the contents of this file by adding and running a cell with the following:
 
 ```python
-import os
+#View contents of generated flashcards-uncurated.csv
 
-# Path to QR Codes
-QR_CODE_PATH = f"{LAKEHOUSE_FILE_PATH}/qrcodes"
-os.makedirs(QR_CODE_PATH, exist_ok=True)
+import pandas as pd
+# Load data into pandas DataFrame from "/lakehouse/default/Files/initial_data/flashcards-uncurated.csv"
+df = pd.read_csv("/lakehouse/default/Files/initial_data/flashcards-uncurated.csv", delimiter="|")
+display(df)
 ```
 
-## Load the generated QAs
+![Screenshot of the generated flashcards_uncurated.csv in the notebook](assets/fabric-qna-uncurated.png)
 
-Then we import the generated QAs from the JSON file we created before:
+## Review the generated flashcards
+
+We need to ensure that we have generated quality results to ensure are QnA pairs are not erroneous or otherwise unfit for use as a legitimate study aid.  We will employ human-in-the-loop to validate our results before we shop them off for rendering in our static web app.
+
+1. Navigate to your Lakehouse, select the `Files` tab and click `Refresh`.  You should see two folders in your Lakehouse (`initial_data` and `markdown`).  Click into `initial_data` and select `flashcards-uncurated.csv`.  Review that the content to ensure that it meets quality statndard and make any necessary modifications to the content if necessary by saving off, deleting from the lakehouse, and re-uploading back to the Lakehouse as `flashcards-uncurated.csv`.  When you are satisifed, navigate back to the `initial_data` folder and rename `flashcards-uncurated.csv` to `flashcards-curated.csv` by left-clicking the filename and selecting `Rename`.
+
+![Screenshot of the human-reviewed flashcards_curated.csv file in the lakehouse](assets/fabric-qna-curated.png)
+
+## Prepare generated results for rendering in Static Web App
+
+1. Navigate back to your Notebook.  Now that we have our generated QnA pairs, we need to do some minor transformations in order to prepare our data for rendering in the static Web App.  The following will generate a `topics.json` file which represents the topic for a given collection of individual questions and anwers, these derive from the topic tags originating in `initial_data/topic_urls.json` that were applied to the output when producing `initial_data/module_metadata.json`.  The `topic.json` that we will create here defines the topics or categories for our Question and Answer pairs to allow us to organize them accordingly in the static web app user interface.
 
 ```python
+#Generate a topics.json file that defines the topics for our Question and Answer pairs 
+#Allowing us to organize them accordingly in the static web app user interface 
+
 import json
 
-with open(f"{LAKEHOUSE_FILE_PATH}/generated-QAs.json", "r") as fp:
-    QAS = json.load(fp)
+topics = []
 
-QAS
+with open("/lakehouse/default/Files/initial_data/module_metadata.json") as f:
+    data = json.load(f)
+    for row in data:
+        # https://github.com/MicrosoftDocs/learn/blob/main/learn-pr/wwl-data-ai/get-started-with-graphql-microsoft-fabric/index.yml
+        tmp = {
+            "title": row['title'],
+            "summary": row["desc"],
+            "module": row["index_yaml"].split("/")[-2]
+        }
+        topics.append(tmp)
+
+notebookutils.fs.mkdirs("Files/final_data")
+notebookutils.fs.put("Files/final_data/topics.json", json.dumps(topics))
+
+df = spark.read.option("multiline", "true").json("Files/final_data/topics.json")
+# df now is a Spark DataFrame containing JSON data from "Files/final_data/topics.json".
+display(df)
 ```
 
-## Generate the QR codes images
+If you see these file contents in the output of the DataFrame but do not see a folder named `final_data` in the Lakehouse explorer Pane, right-click the `Files` folder in the Lakehouse Explorer and select `Refresh`, it should now be visible.
 
-Using the `qrcode` library we installed at the beginning, we can generate the QR codes for each flashcard. The source URL for the QR code is the URL to the Microsoft Learn module unit.
+![Screenshot of the output to generate the topics.json file in the lakehouse](assets/fabric-topics-generated)
+
+
+2. Next, we will generate a `generated-QAs.json` that is a full collection of all QnA pairs along with a source pointing to the url from which the question was derived during generation.  This will be used by the static web app to render actual QnA contents.  To create this file, run the following in a new code cell: 
+
 
 ```python
-import qrcode
+#Generate a generated-QAs.json file that defines our Question and Answer pairs 
+#Allowing us to render them accordingly in the static web app user interface 
 
-for qa in QAS:
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(qa["source_url"])
-    qr.make(fit=True)
+import pandas as pd
 
-    img = qr.make_image(fill_color="black", back_color="white")
-    img.save(f"{QR_CODE_PATH}/{qa['id']}.png")
+# Specify the path to your CSV file and the custom delimiter
+file_path = '/lakehouse/default/Files/initial_data/flashcards-curated.csv'
+delimiter = '|'  # Example delimiter
+
+# Read the CSV file
+df = pd.read_csv(file_path, delimiter=delimiter, header=0)
+
+websiteQAs = {}
+
+for index, row in df.iterrows():
+    module_id = row['include_path'].split("/")[-3]
+    if module_id not in websiteQAs:
+        websiteQAs[module_id] = []
+    else: 
+        tmp = {
+            "q": row['question'],
+            "a": row['answer'],
+            "source": row['include_name']
+        }
+        websiteQAs[module_id].append(tmp)
+
+notebookutils.fs.put("Files/final_data/generated-QAs.json", json.dumps(websiteQAs))
+
+df = spark.read.option("multiline", "true").json("Files/final_data/generated-QAs.json")
+# df now is a Spark DataFrame containing JSON data from "Files/final_data/generated-QAs.json".
+display(df)
+
 ```
-    
-If you go back to the Lakehouse Explorer, you should see the QR codes in the `qrcodes` folder. Select the three dots next to the `qrcodes` folder and select `Refresh` to see the files.
 
-![Screenshot of the Lakehouse Explorer with the qrcodes folder](assets/lakehouse-explorer-qrcodes.png)
+If you see these file contents in the output of the DataFrame but do not see a file in the `final_data` folder named `generated-QAs.json` in the Lakehouse explorer Pane, right-click the `final_data` folder in the Lakehouse Explorer and select `Refresh`, it should now be visible.
 
-Go back to your workspace, select the `flashcards_workshop` Lakehouse, and then select the `Files` tab. You should see the `qrcodes` folder with the QR codes (select `Refresh` if they are not loaded). If you select a QR code, you can see the content of the QR code in the preview pane.
+![Screenshot of the output to generate the generated-QAs.json file in the lakehouse](assets/fabric-generated-qas.png)
 
-![Screenshot of a QR code in the Lakehouse Explorer](assets/lakehouse-explorer-qrcode.png)
-
-Try scanning the QR code with your phone to see how it leads to the source material in Microsoft Learn.
 
 ---
 
