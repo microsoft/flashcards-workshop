@@ -794,7 +794,7 @@ Of course, our end goal is to produce a static web app with a full-set of questi
 
 3. Navigate to your Lakehouse in Microsoft Fabric and expand the `Files` folder, then select the `final_data` subfolder.  Right-Click the `final_data` subfolder and select `Upload => Upload files`.  Ensure that the "Overwrite if files already exist" option is selected and upload both of the newly downloaded `topics.json` and `generated-QAs.json` into the `final_data` subfolder as shown:
 
-![Screenshot showing upload and overwriting of the full topics.json and generated-QAs.json files into the lakehouse](assetsfabric-upload-full-topic-and-qas.png)
+![Screenshot showing upload and overwriting of the full topics.json and generated-QAs.json files into the lakehouse](assets/fabric-upload-full-topic-and-qas.png)
 
 ## Copy the JSON Data to Azure Blob Storage
 
@@ -892,7 +892,7 @@ Now save and run your pipeline, once it completes, you should see both files hav
 
 You will update the web app to use your own `topics.json` and `generated-QAs.json` as the data source of the web app. For those with access to an Azure Account, we will serve this from your blob storage account which should now have the latest and greatest curated versions of these files.  For those without access to an Azure Account, we will serve these files from your own GitHub repo.
 
-1. Inside your forked repo, navigate to the `src/app/page.tsx` path of the website repository.  Look for the penicl icon to edit the contents of this file:
+1. Inside your forked repo, navigate to the `src/app/page.tsx` path of the website repository.  Look for the pencil icon to edit the contents of this file:
 
 ![Screenshot of the Fabric Flashcards website repository fork being edited](assets/workshop-website-repo-fork-edit.png)
 
@@ -935,7 +935,7 @@ GitHub Pages is a static site hosting service that allows you to host a website 
 
 ![Screenshot showing where to select to start the deployment workflow.](assets/github-actions-run.png)
 
-4. The deployment should now be in progress, it should take a minute or so to copmlete
+4. The deployment should now be in progress, it should take a minute or so to complete
 
 ![Screenshot showing the deployment workflow running.](assets/github-actions-running.png)
 
