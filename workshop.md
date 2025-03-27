@@ -874,10 +874,13 @@ Now save and run your pipeline, once it completes, you should see both files hav
 
 
 ---
+
+
 # Publish the Flashcards to a Static Web App
 
-## Fork a copy of the Flashcard Web App
+We are now ready to display our flashcards in a static web app on GitHub. [GitHub Pages](https://docs.github.com/pages) is a static site hosting service that allows you to host a website directly from a repository on GitHub. It can be used to host personal, organizational, or project websites. GitHub Pages takes HTML, CSS, and JavaScript files straight from a repository on GitHub, optionally runs them through a build process, and publishes as a website.
 
+## Fork a copy of the Flashcard Web App
 
 1. Navigate to the [Flashcards Web App repository](https://github.com/videlalvaro/fabcon-flashcards-workshop-site) while logged into your GitHub account and fork the repository.
 
@@ -920,8 +923,6 @@ const QAsURL = "https://raw.githubusercontent.com/[your GitHub handle]/fabcon-fl
 ![Screenshot of the Fabric Flashcards website repository fork committing a change](assets/workshop-website-repo-fork-commit.png)
 
 ## Enable GitHub Pages
-
-GitHub Pages is a static site hosting service that allows you to host a website directly from a repository on GitHub. It can be used to host personal, organizational, or project websites. GitHub Pages takes HTML, CSS, and JavaScript files straight from a repository on GitHub, optionally runs them through a build process, and publishes as a website.
 
 1. Navigate to your forked repository and select `Settings`, then navigate to **Pages** under **Code and automation**. Select `GitHub Actions` in the dropdown under `Source`. This will configure your repository to a deploy a static website to GitHub pages using GitHub Actions. 
 
