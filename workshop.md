@@ -778,9 +778,11 @@ If you see these file contents in the output of the DataFrame but do not see a f
 
 # Create a Fabric Data Pipeline
 
+In this section you are going to learn how to use Fabric Data Pipelines to copy data from your Lakehouse to Azure Storage. This is one of the many ways you can use to connect your data in Fabric with external applications. 
+
 ## Update Lakehouse with full-set of QnA pairs
 
-At this point, if you have followed all workshop instructions up to this point without modification, you would have generated a subset of QnA pairs due to limitations in how many requests we are able to make to Azure OpenAI.  We will begin this section under that assumption.  
+If you have followed all workshop instructions up to this point without modification, you would have generated a subset of QnA pairs since for sample purposes we didn't want to over extend your Azure OpenAI quota.  We will begin this section under that assumption.  
 
 Of course, our end goal is to produce a static web app with a full-set of questions so you can use it to study for a real exam!  To do achieve this, we will start by updating the `topics.json` and `generated-QAs.json` files that are currently in our Lakehouse with known-working, hand-curated topics questions that cover 12 unique topics in Microsoft Fabric.  
 
@@ -872,6 +874,7 @@ Now save and run your pipeline, once it completes, you should see both files hav
 
 ![Screenshot of the Azure Blob Storage account with the topics.json and generated-QAs json files](assets/azure-blob-storage-topics-and-qas.png)
 
+If you reached this point you have successfully used Pipelines to copy data from your Lakehouse to Azure Blob Storage. Of course there's much more you can do with pipelines [Orchestrate processes and data movement with Microsoft Fabric](https://learn.microsoft.com/training/modules/use-data-factory-pipelines-fabric/)
 
 ---
 
@@ -949,6 +952,7 @@ const QAsURL = "https://raw.githubusercontent.com/[your GitHub handle]/fabcon-fl
 
 ![Screenshot sources of topics.json and generated-QAs.json in the deployed static web site.](assets/github-pages-live-inspect.png)
 
+So like that you can see how you can host a static website on GitHub Pages while at the same time serving dynamicly generated data from Azure. How cool is that!
 
 ---
 
