@@ -156,7 +156,7 @@ You'll learn how to:
 
     **Subscription** - This should auto-populate based on your account settings
 
-    **Resource group** - Select `Create new` and provide a name or select and existing Resource group
+    **Resource group** - Select `Create new` and provide a name or select an existing Resource group
 
     **Storage account name** - The name must be unique across all existing storage account names in Azure. It must be 3 to 24 characters long, and can contain only lowercase letters and numbers.
 
@@ -631,7 +631,7 @@ You should see a collection of five QnA pairs generated based on the contents of
     with open("/lakehouse/default/Files/initial_data/module_metadata_with_mds.json") as f:
         file_list = json.load(f)
 
-    csv_file = '/lakehouse/default/Files/initial_data/flashcards-noncurated.csv'
+    csv_file = '/lakehouse/default/Files/initial_data/flashcards-uncurated.csv'
 
     with open(csv_file, mode='w', newline='') as file:
         writer = csv.writer(file, delimiter='|')
@@ -666,7 +666,7 @@ You should see a collection of five QnA pairs generated based on the contents of
     ```
 
 
-    As the code runs, you should see the generated questions and answers in the output. The questions and answers are saved to a file in the `initial_data` subfolder in the Lakehouse explore named `flashcard-uncurated.csv`.  The name of this file denotes that these results have not yet gone through human review, which is not only good for quality assurance but also to ensure that [Responsible AI Guidelines](https://www.microsoft.com/ai/principles-and-approach) are employed.  If you do not see this file, hover your mouse above the `initial_data` subfolder in the Lakehouse expplorer, right-click, and select `Refresh`, it should now be visible..
+    As the code runs, you should see the generated questions and answers in the output. The questions and answers are saved to a file in the `initial_data` subfolder in the Lakehouse explorer named `flashcard-uncurated.csv`.  The name of this file denotes that these results have not yet gone through human review, which is not only good for quality assurance but also to ensure that [Responsible AI Guidelines](https://www.microsoft.com/ai/principles-and-approach) are employed.  If you do not see this file, hover your mouse above the `initial_data` subfolder in the Lakehouse expplorer, right-click, and select `Refresh`, it should now be visible.
 
     <div class="information" data-title="Note">
 
@@ -689,7 +689,7 @@ You should see a collection of five QnA pairs generated based on the contents of
 
 ## Review the generated flashcards
 
-We need to ensure that we have generated quality results to ensure are QnA pairs are not erroneous or otherwise unfit for use as a legitimate study aid.  We will employ human-in-the-loop to validate our results before we shop them off for rendering in our static web app.
+We need to ensure that we have generated quality results to ensure are QnA pairs are not erroneous or otherwise unfit for use as a legitimate study aid.  We will employ human-in-the-loop to validate our results before we ship them off for rendering in our static web app.
 
 Navigate to your Lakehouse, select the `Files` tab and click `Refresh`.  You should see two folders in your Lakehouse (`initial_data` and `markdown`).  Click into `initial_data` and select `flashcards-uncurated.csv`.  Review that the content to ensure that it meets quality statndard and make any necessary modifications to the content if necessary by saving off, deleting from the lakehouse, and re-uploading back to the Lakehouse as `flashcards-uncurated.csv`.  When you are satisfied, navigate back to the `initial_data` folder and rename `flashcards-uncurated.csv` to `flashcards-curated.csv` by left-clicking the filename and selecting `Rename`.
 
